@@ -27,7 +27,7 @@ import org.apache.flink.core.memory.DataOutputView;
 
 /**
  * A hardware description reflects the hardware environment which is actually present on the task manager's compute
- * nodes. Unlike the {@link InstanceType} the hardware description is determined by the compute node itself and not
+ * nodes. Unlike the {@link Instance} the hardware description is determined by the compute node itself and not
  * loaded from a predefined configuration profile. In particular, the hardware description includes the size of free
  * memory which is actually available to the JVM and can be used to allocate large memory portions.
  * <p>

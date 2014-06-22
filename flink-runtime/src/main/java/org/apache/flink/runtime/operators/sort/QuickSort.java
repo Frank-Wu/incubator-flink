@@ -44,7 +44,7 @@ public final class QuickSort implements IndexedSorter {
 	}
 
 	/**
-	 * Sort the given range of items using quick sort. {@inheritDoc} If the recursion depth falls below
+	 * Sort the given range of items using quick sort. If the recursion depth falls below
 	 * {@link #getMaxDepth},
 	 * then switch to {@link HeapSort}.
 	 */

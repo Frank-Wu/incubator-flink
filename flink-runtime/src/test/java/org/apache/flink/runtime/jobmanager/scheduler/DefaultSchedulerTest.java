@@ -24,12 +24,14 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 
 import org.apache.flink.api.common.io.GenericInputFormat;
 import org.apache.flink.api.common.io.OutputFormat;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.core.io.StringRecord;
+import org.apache.flink.runtime.blobservice.BlobKey;
 import org.apache.flink.runtime.execution.ExecutionState;
 import org.apache.flink.runtime.execution.librarycache.LibraryCacheManager;
 import org.apache.flink.runtime.executiongraph.ExecutionGraph;
@@ -136,7 +138,7 @@ public class DefaultSchedulerTest {
 		}
 
 		try {
-			LibraryCacheManager.register(jobGraph.getJobID(), new String[0]);
+			LibraryCacheManager.register(jobGraph.getJobID(), Collections.<BlobKey>emptyList());
 			return new ExecutionGraph(jobGraph, 1);
 
 		} catch (GraphConversionException e) {

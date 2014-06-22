@@ -39,6 +39,16 @@ public final class ConfigConstants {
 	// -------------------------------- Runtime -------------------------------
 
 	/**
+	 * The config parameters defining the port the BLOB service's server listens on.
+	 */
+	public static final String BLOB_SERVICE_PORT = "blob.service.port";
+
+	/**
+	 * The config parameter defining the storage directory to be used by the BLOB service.
+	 */
+	public static final String BLOB_SERVICE_DIRECTORY = "blob.service.directory";
+
+	/**
 	 * The config parameter defining the network address to connect to
 	 * for communication with the job manager.
 	 */
@@ -293,7 +303,12 @@ public final class ConfigConstants {
 	public static final int DEFAULT_PARALLELIZATION_DEGREE = 1;
 	
 	// ------------------------------ Runtime ---------------------------------
-	
+
+	/**
+	 * The default network port the BLOB service's server listens on.
+	 */
+	public static final int DEFAULT_BLOB_SERVICE_PORT = 6020;
+
 	/**
 	 * The default network port to connect to for communication with the job manager.
 	 */

@@ -518,9 +518,6 @@ public class DefaultScheduler implements InstanceListener, JobStatusListener, Ex
 
 		final Runnable command = new Runnable() {
 
-			/**
-			 * {@inheritDoc}
-			 */
 			@Override
 			public void run() {
 
@@ -678,9 +675,6 @@ public class DefaultScheduler implements InstanceListener, JobStatusListener, Ex
 
 		final Runnable command = new Runnable() {
 
-			/**
-			 * {@inheritDoc}
-			 */
 			@Override
 			public void run() {
 

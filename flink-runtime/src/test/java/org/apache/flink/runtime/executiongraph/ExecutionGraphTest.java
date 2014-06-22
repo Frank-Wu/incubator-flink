@@ -28,9 +28,12 @@ import static org.junit.Assert.fail;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
 
 import org.apache.flink.core.fs.Path;
+import org.apache.flink.runtime.blobservice.BlobKey;
 import org.apache.flink.runtime.execution.ExecutionState;
 import org.apache.flink.runtime.execution.librarycache.LibraryCacheManager;
 import org.apache.flink.runtime.executiongraph.ExecutionGraph;
@@ -64,6 +67,11 @@ import org.apache.flink.api.java.io.TextInputFormat;
  */
 public class ExecutionGraphTest {
 	
+	/**
+	 * Dummy list of required JAR files.
+	 */
+	private static final Collection<BlobKey> REQUIRED_JAR_FILES = Collections.emptyList();
+
 	@BeforeClass
 	public static void reduceLogLevel() {
 		LogUtils.initializeDefaultConsoleLogger(Level.WARN);
@@ -114,7 +122,7 @@ public class ExecutionGraphTest {
 			i1.connectTo(t1);
 			t1.connectTo(o1);
 
-			LibraryCacheManager.register(jobID, new String[0]);
+			LibraryCacheManager.register(jobID, REQUIRED_JAR_FILES);
 
 			final ExecutionGraph eg = new ExecutionGraph(jg, 1);
 
@@ -315,7 +323,7 @@ public class ExecutionGraphTest {
 			i1.connectTo(t1, ChannelType.IN_MEMORY);
 			t1.connectTo(o1, ChannelType.IN_MEMORY);
 
-			LibraryCacheManager.register(jobID, new String[0]);
+			LibraryCacheManager.register(jobID, REQUIRED_JAR_FILES);
 
 			// now convert job graph to execution graph
 			final ExecutionGraph eg = new ExecutionGraph(jg, 1);
@@ -441,7 +449,7 @@ public class ExecutionGraphTest {
 			t2.connectTo(t3);
 			t3.connectTo(o1);
 
-			LibraryCacheManager.register(jobID, new String[0]);
+			LibraryCacheManager.register(jobID, REQUIRED_JAR_FILES);
 
 			final ExecutionGraph eg = new ExecutionGraph(jg, 1);
 
@@ -686,7 +694,7 @@ public class ExecutionGraphTest {
 			t4.connectTo(o1, ChannelType.NETWORK);
 			t4.connectTo(o2, ChannelType.NETWORK);
 
-			LibraryCacheManager.register(jobID, new String[0]);
+			LibraryCacheManager.register(jobID, REQUIRED_JAR_FILES);
 
 			// now convert job graph to execution graph
 			final ExecutionGraph eg = new ExecutionGraph(jg, 1);
@@ -783,7 +791,7 @@ public class ExecutionGraphTest {
 			cross.connectTo(output, ChannelType.IN_MEMORY, 0, 0,
 				DistributionPattern.POINTWISE);
 
-			LibraryCacheManager.register(jobID, new String[0]);
+			LibraryCacheManager.register(jobID, REQUIRED_JAR_FILES);
 
 			// now convert job graph to execution graph
 			final ExecutionGraph eg = new ExecutionGraph(jg, 1);
@@ -932,7 +940,7 @@ public class ExecutionGraphTest {
 			forward2.setVertexToShareInstancesWith(forward3);
 			forward3.setVertexToShareInstancesWith(output1);
 
-			LibraryCacheManager.register(jobID, new String[0]);
+			LibraryCacheManager.register(jobID, REQUIRED_JAR_FILES);
 
 			// now convert job graph to execution graph
 			final ExecutionGraph eg = new ExecutionGraph(jg, 1);

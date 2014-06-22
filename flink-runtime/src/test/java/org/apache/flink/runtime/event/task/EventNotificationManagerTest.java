@@ -46,9 +46,6 @@ public class EventNotificationManagerTest {
 		 */
 		private AbstractTaskEvent receivedEvent = null;
 
-		/**
-		 * {@inheritDoc}
-		 */
 		@Override
 		public void eventOccurred(AbstractTaskEvent event) {
 

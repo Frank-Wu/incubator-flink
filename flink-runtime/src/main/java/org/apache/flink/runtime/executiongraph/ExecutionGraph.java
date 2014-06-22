@@ -20,6 +20,7 @@
 package org.apache.flink.runtime.executiongraph;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -40,6 +41,7 @@ import org.apache.flink.api.common.io.InitializeOnMaster;
 import org.apache.flink.api.common.io.OutputFormat;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.core.io.InputSplit;
+import org.apache.flink.runtime.blobservice.BlobKey;
 import org.apache.flink.runtime.execution.ExecutionListener;
 import org.apache.flink.runtime.execution.ExecutionState;
 import org.apache.flink.runtime.execution.librarycache.LibraryCacheManager;
@@ -65,8 +67,6 @@ import org.apache.flink.util.StringUtils;
  * observing a job. An execution graph is created from an job graph. In contrast to a job graph
  * it can contain communication edges of specific types, sub groups of vertices and information on
  * when and where (on which instance) to run particular tasks.
- * <p>
- * This class is thread-safe.
  * 
  */
 public class ExecutionGraph implements ExecutionListener {
@@ -140,24 +140,9 @@ public class ExecutionGraph implements ExecutionListener {
 	private final CopyOnWriteArrayList<ExecutionStageListener> executionStageListeners = new CopyOnWriteArrayList<ExecutionStageListener>();
 
 	/**
-	 * Private constructor used for duplicating execution vertices.
-	 * 
-	 * @param jobID
-	 *        the ID of the duplicated execution graph
-	 * @param jobName
-	 *        the name of the original job graph
-	 * @param jobConfiguration
-	 *        the configuration originally attached to the job graph
+	 * List of the BLOB keys referring to the JAR files required to run this job.
 	 */
-	private ExecutionGraph(final JobID jobID, final String jobName, final Configuration jobConfiguration) {
-		if (jobID == null) {
-			throw new IllegalArgumentException("Argument jobID must not be null");
-		}
-
-		this.jobID = jobID;
-		this.jobName = jobName;
-		this.jobConfiguration = jobConfiguration;
-	}
+	private final List<BlobKey> requiredJarFiles;
 
 	/**
 	 * Creates a new execution graph from a job graph.
@@ -170,7 +155,14 @@ public class ExecutionGraph implements ExecutionListener {
 	 *         thrown if the job graph is not valid and no execution graph can be constructed from it
 	 */
 	public ExecutionGraph(JobGraph job, int defaultParallelism) throws GraphConversionException {
-		this(job.getJobID(), job.getName(), job.getJobConfiguration());
+		this.jobID = job.getJobID();
+		this.jobName = job.getName();
+		this.jobConfiguration = job.getJobConfiguration();
+
+		final ArrayList<BlobKey> requiredJarFiles = new ArrayList<BlobKey>(job.getUserJarBlobKeys());
+		// Make sure the BLOB keys occur in a defined-order (important for signature calculation)
+		Collections.sort(requiredJarFiles);
+		this.requiredJarFiles = Collections.unmodifiableList(requiredJarFiles);
 
 		// Start constructing the new execution graph from given job graph
 		try {
@@ -456,7 +448,7 @@ public class ExecutionGraph implements ExecutionListener {
 
 		// Calculate the cryptographic signature of this vertex
 		final ExecutionSignature signature = ExecutionSignature.createSignature(jobVertex.getInvokableClass(),
-			jobVertex.getJobGraph().getJobID());
+			this.requiredJarFiles);
 
 		// Create a group vertex for the job vertex
 
@@ -1325,7 +1317,8 @@ public class ExecutionGraph implements ExecutionListener {
 	
 	/**
 	 * Retrieves the number of required slots to run this execution graph
-	 * @return
+	 * 
+	 * @return The number of required slots.
 	 */
 	public int getRequiredSlots(){
 		int maxRequiredSlots = 0;
@@ -1343,5 +1336,14 @@ public class ExecutionGraph implements ExecutionListener {
 		}
 
 		return maxRequiredSlots;
+	}
+
+	/**
+	 * returns a list of the BLOB keys referring to the JAR files required to run this job.
+	 * 
+	 * @return a list of the BLOB keys referring to the JAR files required to run this job.
+	 */
+	public List<BlobKey> getRequiredJarFiles() {
+		return this.requiredJarFiles;
 	}
 }

@@ -16,7 +16,6 @@
  * limitations under the License.
  */
 
-
 package org.apache.flink.runtime.protocols;
 
 import java.io.IOException;
@@ -25,9 +24,6 @@ import java.util.Set;
 
 import org.apache.flink.core.protocols.VersionedProtocol;
 import org.apache.flink.runtime.deployment.TaskDeploymentDescriptor;
-import org.apache.flink.runtime.execution.librarycache.LibraryCacheProfileRequest;
-import org.apache.flink.runtime.execution.librarycache.LibraryCacheProfileResponse;
-import org.apache.flink.runtime.execution.librarycache.LibraryCacheUpdate;
 import org.apache.flink.runtime.executiongraph.ExecutionVertexID;
 import org.apache.flink.runtime.io.network.channels.ChannelID;
 import org.apache.flink.runtime.taskmanager.TaskCancelResult;
@@ -76,29 +72,6 @@ public interface TaskOperationProtocol extends VersionedProtocol {
 	TaskKillResult killTask(ExecutionVertexID id) throws IOException;
 
 	/**
-	 * Queries the task manager about the cache status of the libraries stated in the {@link LibraryCacheProfileRequest}
-	 * object.
-	 * 
-	 * @param request
-	 *        a {@link LibraryCacheProfileRequest} containing a list of libraries whose cache status is to be determined
-	 * @return a {@link LibraryCacheProfileResponse} containing the cache status for each library included in the
-	 *         request
-	 * @throws IOException
-	 *         thrown if an error occurs during this remote procedure call
-	 */
-	LibraryCacheProfileResponse getLibraryCacheProfile(LibraryCacheProfileRequest request) throws IOException;
-
-	/**
-	 * Updates the task manager's library cache.
-	 * 
-	 * @param update
-	 *        a {@link LibraryCacheUpdate} object used to transmit the library data
-	 * @throws IOException
-	 *         thrown if an error occurs during this remote procedure call
-	 */
-	void updateLibraryCache(LibraryCacheUpdate update) throws IOException;
-
-	/**
 	 * Invalidates the entries identified by the given channel IDs from the task manager's receiver lookup cache.
 	 * 
 	 * @param channelIDs
@@ -111,9 +84,6 @@ public interface TaskOperationProtocol extends VersionedProtocol {
 	/**
 	 * Triggers the task manager write the current utilization of its read and write buffers to its logs.
 	 * This method is primarily for debugging purposes.
-	 * 
-	 * @throws IOException
-	 *         thrown if an error occurs while transmitting the request
 	 */
 	void logBufferUtilization();
 

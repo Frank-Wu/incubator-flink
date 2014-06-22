@@ -100,9 +100,6 @@ public final class EventCollector extends TimerTask implements ProfilingListener
 			this.vertex = vertex;
 		}
 
-		/**
-		 * {@inheritDoc}
-		 */
 		@Override
 		public void executionStateChanged(final JobID jobID, final ExecutionVertexID vertexID,
 				final ExecutionState newExecutionState, final String optionalMessage) {
@@ -127,28 +124,18 @@ public final class EventCollector extends TimerTask implements ProfilingListener
 			this.eventCollector.addEvent(jobID, executionStateChangeEvent);
 		}
 
-		/**
-		 * {@inheritDoc}
-		 */
 		@Override
 		public void userThreadStarted(final JobID jobID, final ExecutionVertexID vertexID, final Thread userThread) {
 			// Nothing to do here
 		}
 
-		/**
-		 * {@inheritDoc}
-		 */
 		@Override
 		public void userThreadFinished(final JobID jobID, final ExecutionVertexID vertexID, final Thread userThread) {
 			// Nothing to do here
 		}
 
-		/**
-		 * {@inheritDoc}
-		 */
 		@Override
 		public int getPriority() {
-
 			return 20;
 		}
 
@@ -204,9 +191,6 @@ public final class EventCollector extends TimerTask implements ProfilingListener
 			this.submissionTimestamp = submissionTimestamp;
 		}
 
-		/**
-		 * {@inheritDoc}
-		 */
 		@Override
 		public void jobStatusHasChanged(final ExecutionGraph executionGraph, final InternalJobStatus newJobStatus,
 				final String optionalMessage) {
@@ -262,9 +246,6 @@ public final class EventCollector extends TimerTask implements ProfilingListener
 			this.jobID = jobID;
 		}
 
-		/**
-		 * {@inheritDoc}
-		 */
 		@Override
 		public void vertexAssignmentChanged(final ExecutionVertexID id, final AllocatedResource newAllocatedResource) {
 

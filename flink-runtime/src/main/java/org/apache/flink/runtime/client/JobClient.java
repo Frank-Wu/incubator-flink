@@ -56,6 +56,11 @@ public class JobClient {
 	private static final Log LOG = LogFactory.getLog(JobClient.class);
 
 	/**
+	 * The address the IPC service of the job manager listens on.
+	 */
+	private final InetSocketAddress jobManagerAddress;
+
+	/**
 	 * The job management server stub.
 	 */
 	private final JobManagementProtocol jobSubmitClient;
@@ -84,8 +89,7 @@ public class JobClient {
 	 * The sequence number of the last processed event received from the job manager.
 	 */
 	private long lastProcessedEventSequenceNumber = -1;
-	
-	
+
 	private PrintStream console;
 
 	/**
@@ -148,9 +152,11 @@ public class JobClient {
 		final int port = configuration.getInteger(ConfigConstants.JOB_MANAGER_IPC_PORT_KEY,
 			ConfigConstants.DEFAULT_JOB_MANAGER_IPC_PORT);
 
-		final InetSocketAddress inetaddr = new InetSocketAddress(address, port);
-		this.jobSubmitClient = RPC.getProxy(JobManagementProtocol.class, inetaddr, NetUtils.getSocketFactory());
-		this.accumulatorProtocolProxy = RPC.getProxy(AccumulatorProtocol.class, inetaddr, NetUtils.getSocketFactory());
+		this.jobManagerAddress = new InetSocketAddress(address, port);
+		this.jobSubmitClient = RPC.getProxy(JobManagementProtocol.class, this.jobManagerAddress,
+			NetUtils.getSocketFactory());
+		this.accumulatorProtocolProxy = RPC.getProxy(AccumulatorProtocol.class, this.jobManagerAddress,
+			NetUtils.getSocketFactory());
 		this.jobGraph = jobGraph;
 		this.configuration = configuration;
 		this.jobCleanUp = new JobCleanUp(this);
@@ -173,7 +179,9 @@ public class JobClient {
 			final InetSocketAddress jobManagerAddress)
 			throws IOException {
 
-		this.jobSubmitClient = RPC.getProxy(JobManagementProtocol.class, jobManagerAddress,	NetUtils.getSocketFactory());
+		this.jobManagerAddress = jobManagerAddress;
+		this.jobSubmitClient = RPC
+			.getProxy(JobManagementProtocol.class, jobManagerAddress, NetUtils.getSocketFactory());
 		this.jobGraph = jobGraph;
 		this.configuration = configuration;
 		this.jobCleanUp = new JobCleanUp(this);
@@ -213,6 +221,14 @@ public class JobClient {
 	public JobSubmissionResult submitJob() throws IOException {
 
 		synchronized (this.jobSubmitClient) {
+
+			// We submit the required files with the BLOB service before the submission of the actual job graph
+			final int blobManagerPort = this.configuration.getInteger(ConfigConstants.BLOB_SERVICE_PORT,
+				ConfigConstants.DEFAULT_BLOB_SERVICE_PORT);
+			final InetSocketAddress blobServerAddress = new InetSocketAddress(this.jobManagerAddress.getAddress(),
+				blobManagerPort);
+
+			this.jobGraph.uploadRequiredJarFiles(blobServerAddress);
 
 			return this.jobSubmitClient.submitJob(this.jobGraph);
 		}
@@ -260,7 +276,7 @@ public class JobClient {
 
 		synchronized (this.jobSubmitClient) {
 
-			final JobSubmissionResult submissionResult = this.jobSubmitClient.submitJob(this.jobGraph);
+			final JobSubmissionResult submissionResult = submitJob();
 			if (submissionResult.getReturnCode() == AbstractJobResult.ReturnCode.ERROR) {
 				LOG.error("ERROR: " + submissionResult.getDescription());
 				throw new JobExecutionException(submissionResult.getDescription(), false);
@@ -339,17 +355,17 @@ public class JobClient {
 					if (jobStatus == JobStatus.FINISHED) {
 						Runtime.getRuntime().removeShutdownHook(this.jobCleanUp);
 						final long jobDuration = jobEvent.getTimestamp() - startTimestamp;
-						
+
 						// Request accumulators
 						Map<String, Object> accumulators = null;
 						try {
 							accumulators = AccumulatorHelper.toResultMap(getAccumulators().getAccumulators());
 						} catch (IOException ioe) {
 							Runtime.getRuntime().removeShutdownHook(this.jobCleanUp);
-							throw ioe;	// Rethrow error
+							throw ioe; // Rethrow error
 						}
 						return new JobExecutionResult(jobDuration, accumulators);
-						
+
 					} else if (jobStatus == JobStatus.CANCELED || jobStatus == JobStatus.FAILED) {
 						Runtime.getRuntime().removeShutdownHook(this.jobCleanUp);
 						LOG.info(jobEvent.getOptionalMessage());
@@ -397,7 +413,7 @@ public class JobClient {
 		LOG.error(errorMessage);
 		throw new IOException(errorMessage);
 	}
-	
+
 	public void setConsoleStreamForReporting(PrintStream stream) {
 		this.console = stream;
 	}

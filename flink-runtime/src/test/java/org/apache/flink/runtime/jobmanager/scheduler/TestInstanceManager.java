@@ -115,9 +115,6 @@ public final class TestInstanceManager implements InstanceManager {
 
 		final Runnable runnable = new Runnable() {
 
-			/**
-			 * {@inheritDoc}
-			 */
 			@Override
 			public void run() {
 				il.resourcesAllocated(jobID, allocatedResources);

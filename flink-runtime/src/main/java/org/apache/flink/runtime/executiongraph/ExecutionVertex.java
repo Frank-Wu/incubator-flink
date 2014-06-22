@@ -312,9 +312,6 @@ public final class ExecutionVertex {
 
 		final Runnable command = new Runnable() {
 
-			/**
-			 * {@inheritDoc}
-			 */
 			@Override
 			public void run() {
 
@@ -996,7 +993,7 @@ public final class ExecutionVertex {
 			this.vertexID, this.groupVertex.getName(), this.indexInVertexGroup,
 			this.groupVertex.getCurrentNumberOfGroupMembers(), this.executionGraph.getJobConfiguration(),
 			this.groupVertex.getConfiguration(), this.groupVertex.getInvokableClass(), ogd,
-			igd);
+			igd, this.executionGraph.getRequiredJarFiles());
 
 		return tdd;
 	}

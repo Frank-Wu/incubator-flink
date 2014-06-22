@@ -83,9 +83,6 @@ public final class S3DataOutputStream extends FSDataOutputStream {
 			this.length = length;
 		}
 
-		/**
-		 * {@inheritDoc}
-		 */
 		@Override
 		public int read() throws IOException {
 
@@ -96,18 +93,12 @@ public final class S3DataOutputStream extends FSDataOutputStream {
 			return (int) this.srcBuf[this.bytesRead++];
 		}
 
-		/**
-		 * {@inheritDoc}
-		 */
 		@Override
 		public int read(final byte[] buf) throws IOException {
 
 			return read(buf, 0, buf.length);
 		}
 
-		/**
-		 * {@inheritDoc}
-		 */
 		@Override
 		public int read(final byte[] buf, final int off, final int len) throws IOException {
 
@@ -122,18 +113,12 @@ public final class S3DataOutputStream extends FSDataOutputStream {
 			return bytesToCopy;
 		}
 
-		/**
-		 * {@inheritDoc}
-		 */
 		@Override
 		public int available() throws IOException {
 
 			return (this.length - bytesRead);
 		}
 
-		/**
-		 * {@inheritDoc}
-		 */
 		@Override
 		public long skip(final long n) throws IOException {
 

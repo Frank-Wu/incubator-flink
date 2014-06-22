@@ -50,6 +50,7 @@ import org.apache.flink.configuration.GlobalConfiguration;
 import org.apache.flink.core.io.StringRecord;
 import org.apache.flink.runtime.ExecutionMode;
 import org.apache.flink.runtime.accumulators.AccumulatorEvent;
+import org.apache.flink.runtime.blobservice.BlobService;
 import org.apache.flink.runtime.client.AbstractJobResult;
 import org.apache.flink.runtime.client.JobCancelResult;
 import org.apache.flink.runtime.client.JobProgressResult;
@@ -181,6 +182,11 @@ public class JobManager implements DeploymentManager, ExtendedManagementProtocol
 		// Load the job progress collector
 		this.eventCollector = new EventCollector(this.recommendedClientPollingInterval);
 		
+		// Initialize the BLOB service in server mode
+		final int blobManagerPort = GlobalConfiguration.getInteger(ConfigConstants.BLOB_SERVICE_PORT,
+				ConfigConstants.DEFAULT_BLOB_SERVICE_PORT);
+		BlobService.initServer(new InetSocketAddress(ipcAddress, blobManagerPort));
+		
 		// Register simple job archive
 		int archived_items = GlobalConfiguration.getInteger(
 				ConfigConstants.JOB_MANAGER_WEB_ARCHIVE_COUNT, ConfigConstants.DEFAULT_JOB_MANAGER_WEB_ARCHIVE_COUNT);
@@ -283,6 +289,9 @@ public class JobManager implements DeploymentManager, ExtendedManagementProtocol
 		if (this.eventCollector != null) {
 			this.eventCollector.shutdown();
 		}
+		
+		// Stop the BLOB service
+		BlobService.shutdown();
 
 		// Finally, shut down the scheduler
 		if (this.scheduler != null) {
@@ -811,8 +820,6 @@ public class JobManager implements DeploymentManager, ExtendedManagementProtocol
 
 	/**
 	 * Returns current ManagementGraph from eventCollector and, if not current, from archive
-	 * 
-	 * {@inheritDoc}
 	 */
 	@Override
 	public ManagementGraph getManagementGraph(final JobID jobID) throws IOException {
@@ -1053,18 +1060,8 @@ public class JobManager implements DeploymentManager, ExtendedManagementProtocol
 		// Create a new runnable and pass it the executor service
 		final Runnable deploymentRunnable = new Runnable() {
 
-			/**
-			 * {@inheritDoc}
-			 */
 			@Override
 			public void run() {
-
-				// Check if all required libraries are available on the instance
-				try {
-					instance.checkLibraryAvailability(jobID);
-				} catch (IOException ioe) {
-					LOG.error("Cannot check library availability: " + StringUtils.stringifyException(ioe));
-				}
 
 				final List<TaskDeploymentDescriptor> submissionList = new SerializableArrayList<TaskDeploymentDescriptor>();
 

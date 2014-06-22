@@ -441,9 +441,6 @@ public class Client {
 			}
 		}
 
-		/**
-		 * {@inheritDoc}
-		 */
 		@Override
 		public void run() {
 

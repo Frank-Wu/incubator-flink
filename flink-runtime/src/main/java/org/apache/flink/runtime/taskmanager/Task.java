@@ -116,9 +116,7 @@ public final class Task implements ExecutionObserver {
 	}
 
 	/**
-	 * Cancels or kills the task.
-	 *
-	 * @param cancel <code>true/code> if the task shall be canceled, <code>false</code> if it shall be killed
+	 * Cancels the task.
 	 */
 	private void cancelOrKillExecution() {
 		if (!this.canceled.compareAndSet(false, true)) {

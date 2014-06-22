@@ -100,9 +100,6 @@ public final class LocatableInputSplitList {
 			return this.inputSplit;
 		}
 
-		/**
-		 * {@inheritDoc}
-		 */
 		@Override
 		public int compareTo(final QueueElem o) {
 
