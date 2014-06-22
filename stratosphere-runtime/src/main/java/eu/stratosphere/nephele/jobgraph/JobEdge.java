@@ -18,7 +18,6 @@ import eu.stratosphere.runtime.io.channels.ChannelType;
 /**
  * Objects of this class represent edges in the user's job graph.
  * The edges can be annotated by a specific channel and compression level.
- * 
  */
 public class JobEdge {
 

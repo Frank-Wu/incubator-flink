@@ -123,7 +123,13 @@ public class JobManager implements DeploymentManager, ExtendedManagementProtocol
 {
 
 	private static final Log LOG = LogFactory.getLog(JobManager.class);
+	
+	private final static int FAILURE_RETURN_CODE = 1;
+	
 
+	private final ExecutorService executorService = Executors.newCachedThreadPool(ExecutorThreadFactory.INSTANCE);
+	
+	
 	private final Server jobManagerServer;
 
 	private final JobManagerProfiler profiler;
@@ -136,19 +142,16 @@ public class JobManager implements DeploymentManager, ExtendedManagementProtocol
 
 	private final DefaultScheduler scheduler;
 	
-	private AccumulatorManager accumulatorManager;
+	private final AccumulatorManager accumulatorManager;
 
-	private InstanceManager instanceManager;
-
+	private final InstanceManager instanceManager;
+	
 	private final int recommendedClientPollingInterval;
-
-	private final ExecutorService executorService = Executors.newCachedThreadPool(ExecutorThreadFactory.INSTANCE);
-
-	private final static int FAILURE_RETURN_CODE = 1;
 
 	private final AtomicBoolean isShutdownInProgress = new AtomicBoolean(false);
 
 	private volatile boolean isShutDown;
+	
 	
 	private WebInfoServer server;
 	
@@ -389,30 +392,7 @@ public class JobManager implements DeploymentManager, ExtendedManagementProtocol
 			}
 	
 			if (LOG.isDebugEnabled()) {
-				LOG.debug("Submitted job " + job.getName() + " is not null");
-			}
-	
-			// Check if any vertex of the graph has null edges
-			AbstractJobVertex jv = job.findVertexWithNullEdges();
-			if (jv != null) {
-				JobSubmissionResult result = new JobSubmissionResult(AbstractJobResult.ReturnCode.ERROR, "Vertex "
-					+ jv.getName() + " has at least one null edge");
-				return result;
-			}
-	
-			if (LOG.isDebugEnabled()) {
-				LOG.debug("Submitted job " + job.getName() + " has no null edges");
-			}
-	
-			// Next, check if the graph is weakly connected
-			if (!job.isWeaklyConnected()) {
-				JobSubmissionResult result = new JobSubmissionResult(AbstractJobResult.ReturnCode.ERROR,
-					"Job graph is not weakly connected");
-				return result;
-			}
-	
-			if (LOG.isDebugEnabled()) {
-				LOG.debug("The graph of job " + job.getName() + " is weakly connected");
+				LOG.debug("Received job " + job.getName());
 			}
 	
 			// Check if job graph has cycles

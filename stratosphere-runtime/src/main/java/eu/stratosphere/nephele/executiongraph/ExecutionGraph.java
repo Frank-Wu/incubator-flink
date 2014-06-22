@@ -49,8 +49,8 @@ import eu.stratosphere.nephele.jobgraph.AbstractJobVertex;
 import eu.stratosphere.nephele.jobgraph.JobEdge;
 import eu.stratosphere.nephele.jobgraph.JobGraph;
 import eu.stratosphere.nephele.jobgraph.JobID;
-import eu.stratosphere.nephele.jobgraph.JobInputVertex;
-import eu.stratosphere.nephele.jobgraph.JobOutputVertex;
+import eu.stratosphere.nephele.jobgraph.InputFormatInputVertex;
+import eu.stratosphere.nephele.jobgraph.OutputFormatOutputVertex;
 import eu.stratosphere.nephele.taskmanager.ExecutorThreadFactory;
 import eu.stratosphere.nephele.template.AbstractInvokable;
 import eu.stratosphere.util.StringUtils;
@@ -459,7 +459,7 @@ public class ExecutionGraph implements ExecutionListener {
 		try {
 			groupVertex = new ExecutionGroupVertex(jobVertex.getName(), jobVertex.getID(), this,
 				jobVertex.getNumberOfSubtasks(), jobVertex.getVertexToShareInstancesWith() != null ? true
-					: false, jobVertex.getNumberOfExecutionRetries(), jobVertex.getConfiguration(), signature,
+					: false, 0, jobVertex.getConfiguration(), signature,
 				invokableClass);
 		} catch (Throwable t) {
 			throw new GraphConversionException(t);
@@ -470,12 +470,12 @@ public class ExecutionGraph implements ExecutionListener {
 
 			final AbstractJobInputVertex jobInputVertex = (AbstractJobInputVertex) jobVertex;
 			
-			if (jobVertex instanceof JobInputVertex) {
+			if (jobVertex instanceof InputFormatInputVertex) {
 				try {
 					// get a handle to the user code class loader
 					ClassLoader cl = LibraryCacheManager.getClassLoader(jobVertex.getJobGraph().getJobID());
 					
-					((JobInputVertex) jobVertex).initializeInputFormatFromTaskConfig(cl);
+					((InputFormatInputVertex) jobVertex).initializeInputFormatFromTaskConfig(cl);
 				}
 				catch (Throwable t) {
 					throw new GraphConversionException("Could not deserialize input format.", t);
@@ -504,8 +504,8 @@ public class ExecutionGraph implements ExecutionListener {
 			groupVertex.setInputSplitType(inputSplitType);
 		}
 
-		if (jobVertex instanceof JobOutputVertex){
-			final JobOutputVertex jobOutputVertex = (JobOutputVertex) jobVertex;
+		if (jobVertex instanceof OutputFormatOutputVertex){
+			final OutputFormatOutputVertex jobOutputVertex = (OutputFormatOutputVertex) jobVertex;
 			
 			try {
 				// get a handle to the user code class loader

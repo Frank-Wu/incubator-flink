@@ -13,21 +13,12 @@
 
 package eu.stratosphere.nephele.jobgraph;
 
-import eu.stratosphere.api.common.io.OutputFormat;
-import eu.stratosphere.api.common.operators.util.UserCodeWrapper;
-import eu.stratosphere.pact.runtime.task.util.TaskConfig;
-
 /**
  * A JobOutputVertex is a specific sub-type of a {@link AbstractJobOutputVertex} and is designed
  * for Nephele tasks which sink data in a not further specified way. As every job output vertex,
  * a JobOutputVertex must not have any further output.
  */
-public class JobOutputVertex extends AbstractJobOutputVertex {
-	/**
-	 * Contains the output format associated to this output vertex. It can be <pre>null</pre>.
-	 */
-	private OutputFormat<?> outputFormat;
-
+public class SimpleOutputVertex extends AbstractJobOutputVertex {
 
 	/**
 	 * Creates a new job file output vertex with the specified name.
@@ -37,11 +28,11 @@ public class JobOutputVertex extends AbstractJobOutputVertex {
 	 * @param jobGraph
 	 *        the job graph this vertex belongs to
 	 */
-	public JobOutputVertex(String name, JobGraph jobGraph) {
+	public SimpleOutputVertex(String name, JobGraph jobGraph) {
 		this(name, null, jobGraph);
 	}
 	
-	public JobOutputVertex(String name, JobVertexID id, JobGraph jobGraph) {
+	public SimpleOutputVertex(String name, JobVertexID id, JobGraph jobGraph) {
 		super(name, id, jobGraph);
 	}
 
@@ -51,28 +42,7 @@ public class JobOutputVertex extends AbstractJobOutputVertex {
 	 * @param jobGraph
 	 *        the job graph this vertex belongs to
 	 */
-	public JobOutputVertex(JobGraph jobGraph) {
+	public SimpleOutputVertex(JobGraph jobGraph) {
 		this(null, jobGraph);
-	}
-	
-	public void setOutputFormat(OutputFormat<?> format) {
-		this.outputFormat = format;
-	}
-	
-	public void initializeOutputFormatFromTaskConfig(ClassLoader cl) {
-		TaskConfig cfg = new TaskConfig(getConfiguration());
-		UserCodeWrapper<OutputFormat<?>> wrapper = cfg.<OutputFormat<?>>getStubWrapper(cl);
-		
-		if (wrapper != null) {
-			this.outputFormat = wrapper.getUserCodeObject(OutputFormat.class, cl);
-			this.outputFormat.configure(cfg.getStubParameters());
-		}
-	}
-
-	/**
-	 * Returns the output format. It can also be <pre>null</pre>.
-	 *
-	 * @return output format or <pre>null</pre>
-	 */
-	public OutputFormat<?> getOutputFormat() { return outputFormat; }
+	}	
 }
