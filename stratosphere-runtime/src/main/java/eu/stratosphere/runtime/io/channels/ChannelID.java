@@ -19,8 +19,22 @@ import java.nio.ByteBuffer;
 
 public class ChannelID extends AbstractID {
 
+	private static final long serialVersionUID = 1L;
+
+	/**
+	 * Creates a new random channel id.
+	 */
 	public ChannelID() {
 		super();
+	}
+	
+	/**
+	 * Creates a new channel id, equal to the given id.
+	 * 
+	 * @param from The id to copy.
+	 */
+	public ChannelID(AbstractID from) {
+		super(from);
 	}
 
 	public ChannelID(long lowerPart, long upperPart) {

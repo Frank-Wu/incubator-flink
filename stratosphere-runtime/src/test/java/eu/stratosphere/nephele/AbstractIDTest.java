@@ -17,6 +17,7 @@ import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 import eu.stratosphere.runtime.io.channels.ChannelID;
@@ -32,11 +33,9 @@ public class AbstractIDTest {
 	 * Tests the setID method of an abstract ID.
 	 */
 	@Test
-	public void testSetID() {
-
-		final ChannelID id1 = new ChannelID();
-		final ChannelID id2 = new ChannelID();
-		id1.setID(id2);
+	public void testEqualsAndHashCode() {
+		final AbstractID id1 = new AbstractID();
+		final AbstractID id2 = new AbstractID(id1);
 
 		assertEquals(id1.hashCode(), id2.hashCode());
 		assertEquals(id1, id2);
@@ -47,7 +46,6 @@ public class AbstractIDTest {
 	 */
 	@Test
 	public void testSerialization() {
-
 		final ChannelID origID = new ChannelID();
 		try {
 			final ChannelID copyID = (ChannelID) CommonTestUtils.createCopy(origID);
@@ -57,6 +55,7 @@ public class AbstractIDTest {
 
 		} catch (IOException e) {
 			e.printStackTrace();
+			Assert.fail(e.getMessage());
 		}
 	}
 }

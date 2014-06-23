@@ -20,5 +20,5 @@ import eu.stratosphere.nephele.AbstractID;
  * 
  */
 public final class GateID extends AbstractID {
-
+	private static final long serialVersionUID = 1L;
 }

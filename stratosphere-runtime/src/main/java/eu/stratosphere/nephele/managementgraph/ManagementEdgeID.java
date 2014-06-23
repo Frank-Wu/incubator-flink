@@ -23,12 +23,12 @@ import eu.stratosphere.runtime.io.channels.ChannelID;
  * 
  */
 public class ManagementEdgeID extends AbstractID {
-
+	private static final long serialVersionUID = 1L;
+	
 	/**
 	 * Initializes ManagementEdgeID.
 	 */
-	ManagementEdgeID() {
-	}
+	public ManagementEdgeID() {}
 
 	/**
 	 * A ManagementEdgeID is derived from the #{@link ChannelID} of the corresponding
@@ -38,8 +38,7 @@ public class ManagementEdgeID extends AbstractID {
 	 *        ID of the corresponding output channel
 	 */
 	public ManagementEdgeID(ChannelID source) {
-		super();
-		this.setID(source);
+		super(source);
 	}
 
 	/**
@@ -48,10 +47,6 @@ public class ManagementEdgeID extends AbstractID {
 	 * @return the corresponding channelID.
 	 */
 	public ChannelID toChannelID() {
-
-		final ChannelID channelID = new ChannelID();
-		channelID.setID(this);
-
-		return channelID;
+		return new ChannelID(this);
 	}
 }

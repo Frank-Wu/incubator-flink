@@ -20,6 +20,8 @@ import java.nio.ByteBuffer;
 
 public final class JobID extends AbstractID {
 
+	private static final long serialVersionUID = 1L;
+	
 	public JobID() {
 		super();
 	}
@@ -33,10 +35,7 @@ public final class JobID extends AbstractID {
 	}
 
 	public static JobID generate() {
-		long lowerPart = AbstractID.generateRandomLong();
-		long upperPart = AbstractID.generateRandomLong();
-
-		return new JobID(lowerPart, upperPart);
+		return new JobID();
 	}
 
 	public static JobID fromByteArray(byte[] bytes) {

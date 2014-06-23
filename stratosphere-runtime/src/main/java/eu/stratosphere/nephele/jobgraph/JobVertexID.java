@@ -17,8 +17,7 @@ import eu.stratosphere.nephele.AbstractID;
 
 /**
  * A class for statistically unique job vertex IDs.
- * 
  */
 public class JobVertexID extends AbstractID {
-
+	private static final long serialVersionUID = 1L;
 }

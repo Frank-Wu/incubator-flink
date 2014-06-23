@@ -23,9 +23,11 @@ import eu.stratosphere.util.StringUtils;
 import io.netty.buffer.ByteBuf;
 
 /**
- * A statistically unique identification number.
+ * An immutable, statistically unique identification number.
  */
-public class AbstractID implements IOReadableWritable {
+public class AbstractID implements IOReadableWritable, java.io.Serializable {
+
+	private static final long serialVersionUID = 1L;
 
 	/** The size of a long in bytes */
 	private static final int SIZE_OF_LONG = 8;
@@ -121,16 +123,6 @@ public class AbstractID implements IOReadableWritable {
 			final int shift = i << 3; // i * 8
 			ba[offset + SIZE_OF_LONG - 1 - i] = (byte) ((l & (0xffL << shift)) >>> shift);
 		}
-	}
-
-	/**
-	 * Sets an ID from another ID by copying its internal byte representation.
-	 *
-	 * @param src source ID
-	 */
-	public void setID(AbstractID src) {
-		this.lowerPart = src.lowerPart;
-		this.upperPart = src.upperPart;
 	}
 
 	@Override

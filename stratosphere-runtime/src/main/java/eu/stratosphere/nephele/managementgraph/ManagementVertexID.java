@@ -22,4 +22,22 @@ import eu.stratosphere.nephele.AbstractID;
  * 
  */
 public final class ManagementVertexID extends AbstractID {
+	
+	private static final long serialVersionUID = 1L;
+	
+	/**
+	 * Creates a new random management id.
+	 */
+	public ManagementVertexID() {
+		super();
+	}
+	
+	/**
+	 * Creates a new management id, equal to the given id.
+	 * 
+	 * @param from The id to copy.
+	 */
+	public ManagementVertexID(AbstractID from) {
+		super(from);
+	}
 }

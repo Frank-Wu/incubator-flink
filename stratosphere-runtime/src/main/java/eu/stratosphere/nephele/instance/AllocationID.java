@@ -23,4 +23,5 @@ import eu.stratosphere.nephele.AbstractID;
  * 
  */
 public class AllocationID extends AbstractID {
+	private static final long serialVersionUID = 1L;
 }

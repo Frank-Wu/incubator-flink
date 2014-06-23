@@ -19,16 +19,13 @@ import eu.stratosphere.nephele.AbstractID;
 
 /**
  * A management group vertex ID uniquely identifies a {@link ManagementGroupVertex}.
- * <p>
- * This class is not thread-safe.
- * 
  */
 public final class ManagementGroupVertexID extends AbstractID {
 	
-	
+	private static final long serialVersionUID = 1L;
+
 	/**
 	 * Constructs a new ManagementGroupVertexID
-	 * 
 	 */
 	public ManagementGroupVertexID() {
 		super();
@@ -52,8 +49,6 @@ public final class ManagementGroupVertexID extends AbstractID {
 	 * @return the new job ID
 	 */
 	public static ManagementGroupVertexID fromHexString(final String hexString) {
-
 		return new ManagementGroupVertexID(DatatypeConverter.parseHexBinary(hexString));
 	}
-	
 }
