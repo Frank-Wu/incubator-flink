@@ -27,8 +27,8 @@ import eu.stratosphere.runtime.io.channels.ChannelType;
 import eu.stratosphere.nephele.jobgraph.AbstractJobVertex;
 import eu.stratosphere.nephele.jobgraph.JobGraph;
 import eu.stratosphere.nephele.jobgraph.JobGraphDefinitionException;
-import eu.stratosphere.nephele.jobgraph.InputFormatInputVertex;
-import eu.stratosphere.nephele.jobgraph.OutputFormatOutputVertex;
+import eu.stratosphere.nephele.jobgraph.InputFormatVertex;
+import eu.stratosphere.nephele.jobgraph.OutputFormatVertex;
 import eu.stratosphere.nephele.jobgraph.JobTaskVertex;
 import eu.stratosphere.pact.runtime.iterative.io.FakeOutputTask;
 import eu.stratosphere.pact.runtime.iterative.task.IterationSynchronizationSinkTask;
@@ -49,17 +49,17 @@ public class JobGraphUtils {
 		client.submitJobAndWait();
 	}
 	
-	public static <T extends FileInputFormat<?>> InputFormatInputVertex createInput(T stub, String path, String name, JobGraph graph,
+	public static <T extends FileInputFormat<?>> InputFormatVertex createInput(T stub, String path, String name, JobGraph graph,
 			int degreeOfParallelism)
 	{
 		stub.setFilePath(path);
 		return createInput(new UserCodeObjectWrapper<T>(stub), name, graph, degreeOfParallelism);
 	}
 
-	private static <T extends InputFormat<?,?>> InputFormatInputVertex createInput(UserCodeWrapper<T> stub, String name, JobGraph graph,
+	private static <T extends InputFormat<?,?>> InputFormatVertex createInput(UserCodeWrapper<T> stub, String name, JobGraph graph,
 			int degreeOfParallelism)
 	{
-		InputFormatInputVertex inputVertex = new InputFormatInputVertex(name, graph);
+		InputFormatVertex inputVertex = new InputFormatVertex(name, graph);
 		
 		inputVertex.setInvokableClass(DataSourceTask.class);
 		
@@ -93,8 +93,8 @@ public class JobGraphUtils {
 		return taskVertex;
 	}
 
-	public static OutputFormatOutputVertex createSync(JobGraph jobGraph, int degreeOfParallelism) {
-		OutputFormatOutputVertex sync = new OutputFormatOutputVertex("BulkIterationSync", jobGraph);
+	public static OutputFormatVertex createSync(JobGraph jobGraph, int degreeOfParallelism) {
+		OutputFormatVertex sync = new OutputFormatVertex("BulkIterationSync", jobGraph);
 		sync.setInvokableClass(IterationSynchronizationSinkTask.class);
 		sync.setNumberOfSubtasks(1);
 		TaskConfig syncConfig = new TaskConfig(sync.getConfiguration());
@@ -102,17 +102,17 @@ public class JobGraphUtils {
 		return sync;
 	}
 
-	public static OutputFormatOutputVertex createFakeOutput(JobGraph jobGraph, String name, int degreeOfParallelism)
+	public static OutputFormatVertex createFakeOutput(JobGraph jobGraph, String name, int degreeOfParallelism)
 	{
-		OutputFormatOutputVertex outputVertex = new OutputFormatOutputVertex(name, jobGraph);
+		OutputFormatVertex outputVertex = new OutputFormatVertex(name, jobGraph);
 		outputVertex.setInvokableClass(FakeOutputTask.class);
 		outputVertex.setNumberOfSubtasks(degreeOfParallelism);
 		return outputVertex;
 	}
 
-	public static OutputFormatOutputVertex createFileOutput(JobGraph jobGraph, String name, int degreeOfParallelism)
+	public static OutputFormatVertex createFileOutput(JobGraph jobGraph, String name, int degreeOfParallelism)
 	{
-		OutputFormatOutputVertex sinkVertex = new OutputFormatOutputVertex(name, jobGraph);
+		OutputFormatVertex sinkVertex = new OutputFormatVertex(name, jobGraph);
 		sinkVertex.setInvokableClass(DataSinkTask.class);
 		sinkVertex.setNumberOfSubtasks(degreeOfParallelism);
 		return sinkVertex;

@@ -43,7 +43,7 @@ import eu.stratosphere.nephele.execution.RuntimeEnvironment;
 import eu.stratosphere.nephele.jobgraph.DistributionPattern;
 import eu.stratosphere.nephele.jobgraph.JobGraph;
 import eu.stratosphere.nephele.jobgraph.JobGraphDefinitionException;
-import eu.stratosphere.nephele.jobgraph.OutputFormatOutputVertex;
+import eu.stratosphere.nephele.jobgraph.OutputFormatVertex;
 import eu.stratosphere.nephele.jobgraph.JobTaskVertex;
 import eu.stratosphere.nephele.taskmanager.Task;
 import eu.stratosphere.nephele.taskmanager.TaskManager;
@@ -487,7 +487,7 @@ public class JobManagerITCase {
 			t1.setInvokableClass(ForwardTask.class);
 
 			// output vertex
-			OutputFormatOutputVertex o1 = new OutputFormatOutputVertex("Output 1", jg);
+			OutputFormatVertex o1 = new OutputFormatVertex("Output 1", jg);
 			o1.setNumberOfSubtasks(1);
 			o1.setInvokableClass(DataSinkTask.class);
 			ExceptionOutputFormat outputFormat = new ExceptionOutputFormat();

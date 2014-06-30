@@ -60,7 +60,7 @@ public abstract class GenericInputFormat<OT> implements InputFormat<OT, GenericI
 	}
 	
 	@Override
-	public Class<? extends GenericInputSplit> getInputSplitType() {
+	public Class<GenericInputSplit> getInputSplitType() {
 		return GenericInputSplit.class;
 	}
 

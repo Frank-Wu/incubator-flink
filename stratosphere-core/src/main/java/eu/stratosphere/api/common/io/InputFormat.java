@@ -54,7 +54,7 @@ import eu.stratosphere.core.io.InputSplit;
  * @param <OT> The type of the produced records.
  * @param <T> The type of input split.
  */
-public interface InputFormat<OT, T extends InputSplit> extends Serializable {
+public interface InputFormat<OT, T extends InputSplit> extends InputSplitSource<T>, Serializable {
 	
 	/**
 	 * Configures this input format. Since input formats are instantiated generically and hence parameterless, 
@@ -88,7 +88,7 @@ public interface InputFormat<OT, T extends InputSplit> extends Serializable {
 	 *                     instances may remain idle.
 	 * @return The splits of this input that can be processed in parallel. 
 	 * 
-	 * @throws Exception Thrown, when the creation of the splits was erroneous.
+	 * @throws IOException Thrown, when the creation of the splits was erroneous.
 	 */
 	T[] createInputSplits(int minNumSplits) throws IOException;
 	

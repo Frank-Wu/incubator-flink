@@ -13,37 +13,33 @@
 
 package eu.stratosphere.nephele.jobgraph;
 
-/**
- * A JobTaskVertex is the vertex type for regular tasks (with both input and output) in Nephele.
- * Tasks running inside a JobTaskVertex must specify at least one record reader and one record writer.
- * 
- */
-public class JobTaskVertex extends AbstractJobVertex {
+import eu.stratosphere.api.common.io.InputFormat;
+import eu.stratosphere.api.common.operators.util.UserCodeWrapper;
+import eu.stratosphere.pact.runtime.task.util.TaskConfig;
 
-	/**
-	 * Creates a new job task vertex with the specified name.
-	 * 
-	 * @param name
-	 *        the name for the new job task vertex
-	 * @param jobGraph
-	 *        the job graph this vertex belongs to
-	 */
-	public JobTaskVertex(String name, JobGraph jobGraph) {
-		this(name, null, jobGraph);
+public class InputFormatVertex extends AbstractJobVertex {
+
+	private static final long serialVersionUID = 1L;
+	
+	
+	public InputFormatVertex(String name) {
+		super(name);
 	}
 	
-	public JobTaskVertex(String name, JobVertexID id, JobGraph jobGraph) {
-		super(name, id, jobGraph);
-		jobGraph.addVertex(this);
+	public InputFormatVertex(String name, JobVertexID id) {
+		super(name, id);
 	}
-
-	/**
-	 * Creates a new job task vertex.
-	 * 
-	 * @param jobGraph
-	 *        the job graph this vertex belongs to
-	 */
-	public JobTaskVertex(JobGraph jobGraph) {
-		this(null, jobGraph);
+	
+	
+	@Override
+	public void initializeOnMaster(ClassLoader loader) throws Exception {
+		TaskConfig cfg = new TaskConfig(getConfiguration());
+		UserCodeWrapper<InputFormat<?, ?>> wrapper = cfg.<InputFormat<?, ?>>getStubWrapper(loader);
+		
+		if (wrapper != null) {
+			InputFormat<?, ?> inputFormat = wrapper.getUserCodeObject(InputFormat.class, loader);
+			inputFormat.configure(cfg.getStubParameters());
+			setInputSplitSource(inputFormat);
+		}
 	}
 }

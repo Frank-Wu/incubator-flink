@@ -13,85 +13,61 @@
 
 package eu.stratosphere.nephele.jobgraph;
 
-import eu.stratosphere.runtime.io.channels.ChannelType;
-
 /**
- * Objects of this class represent edges in the user's job graph.
- * The edges can be annotated by a specific channel and compression level.
+ * This class represent edges (communication channels) in a job graph.
+ * The edges always go from an intermediate result partition to a job vertex.
+ * An edge is parameterized with its {@link DistributionPattern}.
  */
-public class JobEdge {
+public class JobEdge implements java.io.Serializable {
 
-	/**
-	 * The channel type to be used for the resulting channel.
-	 */
-	private final ChannelType channelType;
-
-	/**
-	 * The vertex connected to this edge.
-	 */
-	private final AbstractJobVertex connectedVertex;
-
-	/**
-	 * The index of the consuming task's input gate.
-	 */
-	private final int indexOfInputGate;
+	private static final long serialVersionUID = 1L;
 	
-	/**
-	 * The distribution pattern that should be used for this job edge.
-	 */
+	
+	/** The data set at the source of the edge. */
+	private final IntermediateDataSet source;
+	
+	/** The vertex connected to this edge. */
+	private final AbstractJobVertex target;
+
+	/** The distribution pattern that should be used for this job edge. */
 	private final DistributionPattern distributionPattern;
 
 	/**
 	 * Constructs a new job edge.
 	 * 
-	 * @param connectedVertex
-	 *        the vertex this edge should connect to
-	 * @param channelType
-	 *        the channel type this edge should be translated to at runtime
-	 * @param compressionLevel
-	 *        the compression level the corresponding channel should have at runtime
-	 * @param indexOfInputGate
-	 *        index of the consuming task's input gate that this edge connects to
+	 * @param source The data set that is at the source of this edge.
+	 * @param target The operation that is at the target of this edge.
+	 * @param distributionPattern The pattern that defines how the connection behaves in parallel.
 	 */
-	public JobEdge(final AbstractJobVertex connectedVertex, final ChannelType channelType,
-			final int indexOfInputGate, final DistributionPattern distributionPattern) {
-		this.connectedVertex = connectedVertex;
-		this.channelType = channelType;
-		this.indexOfInputGate = indexOfInputGate;
+	public JobEdge(IntermediateDataSet source, AbstractJobVertex target, DistributionPattern distributionPattern) {
+		this.source = source;
+		this.target = target;
 		this.distributionPattern = distributionPattern;
 	}
 
+
 	/**
-	 * Returns the channel type assigned to this edge.
+	 * Returns the data set at the source of the edge.
 	 * 
-	 * @return the channel type assigned to this edge
+	 * @return The data set at the source of the edge
 	 */
-	public ChannelType getChannelType() {
-		return this.channelType;
+	public IntermediateDataSet getSource() {
+		return source;
 	}
 
 	/**
-	 * Returns the vertex this edge is connected to.
+	 * Returns the vertex connected to this edge.
 	 * 
-	 * @return the vertex this edge is connected to
+	 * @return The vertex connected to this edge.
 	 */
-	public AbstractJobVertex getConnectedVertex() {
-		return this.connectedVertex;
-	}
-
-	/**
-	 * Returns the index of the consuming task's input gate that this edge connects to.
-	 * 
-	 * @return the index of the consuming task's input gate that this edge connects to
-	 */
-	public int getIndexOfInputGate() {
-		return this.indexOfInputGate;
+	public AbstractJobVertex getTarget() {
+		return target;
 	}
 	
 	/**
 	 * Returns the distribution pattern used for this edge.
 	 * 
-	 * @return
+	 * @return The distribution pattern used for this edge.
 	 */
 	public DistributionPattern getDistributionPattern(){
 		return this.distributionPattern;

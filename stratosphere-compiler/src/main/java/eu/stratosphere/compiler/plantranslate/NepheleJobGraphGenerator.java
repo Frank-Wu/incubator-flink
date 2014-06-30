@@ -56,8 +56,8 @@ import eu.stratosphere.nephele.jobgraph.AbstractJobOutputVertex;
 import eu.stratosphere.nephele.jobgraph.AbstractJobVertex;
 import eu.stratosphere.nephele.jobgraph.JobGraph;
 import eu.stratosphere.nephele.jobgraph.JobGraphDefinitionException;
-import eu.stratosphere.nephele.jobgraph.InputFormatInputVertex;
-import eu.stratosphere.nephele.jobgraph.OutputFormatOutputVertex;
+import eu.stratosphere.nephele.jobgraph.InputFormatVertex;
+import eu.stratosphere.nephele.jobgraph.OutputFormatVertex;
 import eu.stratosphere.nephele.jobgraph.JobTaskVertex;
 import eu.stratosphere.pact.runtime.iterative.convergence.WorksetEmptyConvergenceCriterion;
 import eu.stratosphere.pact.runtime.iterative.io.FakeOutputTask;
@@ -802,8 +802,8 @@ public class NepheleJobGraphGenerator implements Visitor<PlanNode> {
 		return vertex;
 	}
 
-	private InputFormatInputVertex createDataSourceVertex(SourcePlanNode node) throws CompilerException {
-		final InputFormatInputVertex vertex = new InputFormatInputVertex(node.getNodeName(), this.jobGraph);
+	private InputFormatVertex createDataSourceVertex(SourcePlanNode node) throws CompilerException {
+		final InputFormatVertex vertex = new InputFormatVertex(node.getNodeName(), this.jobGraph);
 		final TaskConfig config = new TaskConfig(vertex.getConfiguration());
 
 		vertex.setInvokableClass(DataSourceTask.class);
@@ -817,7 +817,7 @@ public class NepheleJobGraphGenerator implements Visitor<PlanNode> {
 	}
 
 	private AbstractJobOutputVertex createDataSinkVertex(SinkPlanNode node) throws CompilerException {
-		final OutputFormatOutputVertex vertex = new OutputFormatOutputVertex(node.getNodeName(), this.jobGraph);
+		final OutputFormatVertex vertex = new OutputFormatVertex(node.getNodeName(), this.jobGraph);
 		final TaskConfig config = new TaskConfig(vertex.getConfiguration());
 
 		vertex.setInvokableClass(DataSinkTask.class);
@@ -1132,7 +1132,7 @@ public class NepheleJobGraphGenerator implements Visitor<PlanNode> {
 		headConfig.setRelativeBackChannelMemory(relativeMemForBackChannel);
 		
 		// --------------------------- create the sync task ---------------------------
-		final OutputFormatOutputVertex sync = new OutputFormatOutputVertex("Sync(" +
+		final OutputFormatVertex sync = new OutputFormatVertex("Sync(" +
 					bulkNode.getNodeName() + ")", this.jobGraph);
 		sync.setInvokableClass(IterationSynchronizationSinkTask.class);
 		sync.setNumberOfSubtasks(1);
@@ -1188,7 +1188,7 @@ public class NepheleJobGraphGenerator implements Visitor<PlanNode> {
 			tailConfig.addOutputShipStrategy(ShipStrategyType.FORWARD);
 			
 			// create the fake output task
-			OutputFormatOutputVertex fakeTail = new OutputFormatOutputVertex("Fake Tail", this.jobGraph);
+			OutputFormatVertex fakeTail = new OutputFormatVertex("Fake Tail", this.jobGraph);
 			fakeTail.setInvokableClass(FakeOutputTask.class);
 			fakeTail.setNumberOfSubtasks(headVertex.getNumberOfSubtasks());
 			this.auxVertices.add(fakeTail);
@@ -1230,7 +1230,7 @@ public class NepheleJobGraphGenerator implements Visitor<PlanNode> {
 			tailConfigOfTerminationCriterion.setOutputSerializer(bulkNode.getSerializerForIterationChannel());
 			tailConfigOfTerminationCriterion.addOutputShipStrategy(ShipStrategyType.FORWARD);
 			
-			OutputFormatOutputVertex fakeTailTerminationCriterion = new OutputFormatOutputVertex("Fake Tail for Termination Criterion", this.jobGraph);
+			OutputFormatVertex fakeTailTerminationCriterion = new OutputFormatVertex("Fake Tail for Termination Criterion", this.jobGraph);
 			fakeTailTerminationCriterion.setInvokableClass(FakeOutputTask.class);
 			fakeTailTerminationCriterion.setNumberOfSubtasks(headVertex.getNumberOfSubtasks());
 			this.auxVertices.add(fakeTailTerminationCriterion);
@@ -1297,7 +1297,7 @@ public class NepheleJobGraphGenerator implements Visitor<PlanNode> {
 		// --------------------------- create the sync task ---------------------------
 		final TaskConfig syncConfig;
 		{
-			final OutputFormatOutputVertex sync = new OutputFormatOutputVertex("Sync (" +
+			final OutputFormatVertex sync = new OutputFormatVertex("Sync (" +
 						iterNode.getNodeName() + ")", this.jobGraph);
 			sync.setInvokableClass(IterationSynchronizationSinkTask.class);
 			sync.setNumberOfSubtasks(1);
@@ -1363,7 +1363,7 @@ public class NepheleJobGraphGenerator implements Visitor<PlanNode> {
 					worksetTailConfig.addOutputShipStrategy(ShipStrategyType.FORWARD);
 					
 					// create the fake output task
-					OutputFormatOutputVertex fakeTail = new OutputFormatOutputVertex("Fake Tail", this.jobGraph);
+					OutputFormatVertex fakeTail = new OutputFormatVertex("Fake Tail", this.jobGraph);
 					fakeTail.setInvokableClass(FakeOutputTask.class);
 					fakeTail.setNumberOfSubtasks(headVertex.getNumberOfSubtasks());
 					this.auxVertices.add(fakeTail);
@@ -1401,7 +1401,7 @@ public class NepheleJobGraphGenerator implements Visitor<PlanNode> {
 					solutionDeltaConfig.addOutputShipStrategy(ShipStrategyType.FORWARD);
 	
 					// create the fake output task
-					OutputFormatOutputVertex fakeTail = new OutputFormatOutputVertex("Fake Tail", this.jobGraph);
+					OutputFormatVertex fakeTail = new OutputFormatVertex("Fake Tail", this.jobGraph);
 					fakeTail.setInvokableClass(FakeOutputTask.class);
 					fakeTail.setNumberOfSubtasks(headVertex.getNumberOfSubtasks());
 					this.auxVertices.add(fakeTail);

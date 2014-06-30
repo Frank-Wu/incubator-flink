@@ -15,17 +15,14 @@
 
 package eu.stratosphere.nephele.util.tasks;
 
-import java.io.DataInput;
-import java.io.DataOutput;
-import java.io.IOException;
-
 import eu.stratosphere.core.fs.Path;
-import eu.stratosphere.nephele.jobgraph.AbstractJobOutputVertex;
-import eu.stratosphere.nephele.jobgraph.JobGraph;
+import eu.stratosphere.nephele.jobgraph.AbstractJobVertex;
 import eu.stratosphere.nephele.jobgraph.JobVertexID;
 
 
-public class JobFileOutputVertex extends AbstractJobOutputVertex {
+public class JobFileOutputVertex extends AbstractJobVertex {
+
+	private static final long serialVersionUID = 1L;
 
 	public static final String PATH_PROPERTY = "outputPath";
 	
@@ -35,30 +32,12 @@ public class JobFileOutputVertex extends AbstractJobOutputVertex {
 	private Path path;
 
 
-	public JobFileOutputVertex(String name, JobVertexID id, JobGraph jobGraph) {
-		super(name, id, jobGraph);
+	public JobFileOutputVertex(String name, JobVertexID id) {
+		super(name, id);
 	}
 	
-	/**
-	 * Creates a new job file output vertex with the specified name.
-	 * 
-	 * @param name
-	 *        the name of the new job file output vertex
-	 * @param jobGraph
-	 *        the job graph this vertex belongs to
-	 */
-	public JobFileOutputVertex(String name, JobGraph jobGraph) {
-		this(name, null, jobGraph);
-	}
-
-	/**
-	 * Creates a new job file input vertex.
-	 * 
-	 * @param jobGraph
-	 *        the job graph this vertex belongs to
-	 */
-	public JobFileOutputVertex(JobGraph jobGraph) {
-		this(null, jobGraph);
+	public JobFileOutputVertex(String name) {
+		super(name);
 	}
 
 	/**
@@ -80,30 +59,5 @@ public class JobFileOutputVertex extends AbstractJobOutputVertex {
 	 */
 	public Path getFilePath() {
 		return this.path;
-	}
-
-	@Override
-	public void read(final DataInput in) throws IOException {
-		super.read(in);
-
-		// Read path of the input file
-		boolean isNotNull = in.readBoolean();
-		if (isNotNull) {
-			this.path = new Path();
-			this.path.read(in);
-		}
-	}
-
-	@Override
-	public void write(final DataOutput out) throws IOException {
-		super.write(out);
-
-		// Write out the path of the input file
-		if (this.path == null) {
-			out.writeBoolean(false);
-		} else {
-			out.writeBoolean(true);
-			this.path.write(out);
-		}
 	}
 }

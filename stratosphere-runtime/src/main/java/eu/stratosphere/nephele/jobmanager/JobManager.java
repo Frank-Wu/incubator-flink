@@ -23,6 +23,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -125,6 +126,11 @@ public class JobManager implements DeploymentManager, ExtendedManagementProtocol
 	private static final Log LOG = LogFactory.getLog(JobManager.class);
 	
 	private final static int FAILURE_RETURN_CODE = 1;
+	
+	
+	private final ConcurrentHashMap<JobID, ExecutionGraph> currentJobs = new ConcurrentHashMap<JobID, ExecutionGraph>();
+	
+	
 	
 
 	private final ExecutorService executorService = Executors.newCachedThreadPool(ExecutorThreadFactory.INSTANCE);
@@ -391,57 +397,82 @@ public class JobManager implements DeploymentManager, ExtendedManagementProtocol
 				return new JobSubmissionResult(AbstractJobResult.ReturnCode.ERROR, "Submitted job is null!");
 			}
 	
+			if (LOG.isInfoEnabled()) {
+				LOG.info(String.format("Received job %s (%s)", job.getJobID(), job.getName()));
+			}
+			
+			// if this is the second part of an existing job, attach it to the previous part
+			ExecutionGraph executionGraph = this.currentJobs.get(job.getJobID());
+			if (executionGraph == null) {
+				if (LOG.isInfoEnabled()) {
+					LOG.info("Creating new execution graph for job " + job.getJobID());
+				}
+				
+				executionGraph = new ExecutionGraph();
+			}
+			else {
+				if (LOG.isInfoEnabled()) {
+					LOG.info(String.format("Found existing execution graph for id %s, attaching this job.", job.getJobID()));
+				}
+			}
+			
+			
+			// first topologically sort the job vertices to form the basis of creating the execution graph
+			List<AbstractJobVertex> topoSorted = job.getVerticesSortedTopologicallyFromSources();
+			
+			// first convert this job graph to an execution graph
 			if (LOG.isDebugEnabled()) {
-				LOG.debug("Received job " + job.getName());
+				LOG.debug(String.format("Creating execution graph from job graph %s (%s)", job.getJobID(), job.getName()));
 			}
-	
-			// Check if job graph has cycles
-			if (!job.isAcyclic()) {
-				JobSubmissionResult result = new JobSubmissionResult(AbstractJobResult.ReturnCode.ERROR,
-					"Job graph is not a DAG");
-				return result;
-			}
-	
-			if (LOG.isDebugEnabled()) {
-				LOG.debug("The graph of job " + job.getName() + " is acyclic");
-			}
-	
-			// Check constrains on degree
-			jv = job.areVertexDegreesCorrect();
-			if (jv != null) {
-				JobSubmissionResult result = new JobSubmissionResult(AbstractJobResult.ReturnCode.ERROR,
-					"Degree of vertex " + jv.getName() + " is incorrect");
-				return result;
-			}
-	
-			if (LOG.isDebugEnabled()) {
-				LOG.debug("All vertices of job " + job.getName() + " have the correct degree");
-			}
-	
-			if (!job.isInstanceDependencyChainAcyclic()) {
-				JobSubmissionResult result = new JobSubmissionResult(AbstractJobResult.ReturnCode.ERROR,
-					"The dependency chain for instance sharing contains a cycle");
-	
-				return result;
-			}
-	
-			if (LOG.isDebugEnabled()) {
-				LOG.debug("The dependency chain for instance sharing is acyclic");
-			}
-	
-			// Check if the job will be executed with profiling enabled
-			boolean jobRunsWithProfiling = false;
-			if (this.profiler != null && job.getJobConfiguration().getBoolean(ProfilingUtils.PROFILE_JOB_KEY, true)) {
-				jobRunsWithProfiling = true;
-			}
-	
-			// Try to create initial execution graph from job graph
-			LOG.info("Creating initial execution graph from job graph " + job.getName());
+			
+			
 			ExecutionGraph eg;
-	
 			try {
 				eg = new ExecutionGraph(job, 1);
-			} catch (GraphConversionException e) {
+			}
+			catch (GraphConversionException e) {
+				if (e.getCause() == null) {
+					return new JobSubmissionResult(AbstractJobResult.ReturnCode.ERROR, StringUtils.stringifyException(e));
+				} else {
+					Throwable t = e.getCause();
+					if (t instanceof FileNotFoundException) {
+						return new JobSubmissionResult(AbstractJobResult.ReturnCode.ERROR, t.getMessage());
+					} else {
+						return new JobSubmissionResult(AbstractJobResult.ReturnCode.ERROR, StringUtils.stringifyException(t));
+					}
+				}
+			}
+			
+			
+			
+			
+			// if this is the second part of an existing job, attach it to the previous part
+			ExecutionGraph previous = this.currentJobs.get(job.getJobID());
+			if (previous == null) {
+				if (LOG.isInfoEnabled()) {
+					LOG.info("Creating new execution graph for job " + job.getJobID());
+				}
+				
+				
+				
+			}
+			else {
+				if (LOG.isInfoEnabled()) {
+					LOG.info(String.format("Found existing job graph for id %s, attaching this job graph to existing.", job.getJobID()));
+				}
+				
+				
+			}
+			
+			// Create the execution graph from the job graph
+			if (LOG.isDebugEnabled()) {
+				LOG.debug(String.format("Creating execution graph from job graph %s (%s)", job.getJobID(), job.getName()));
+				
+			final ExecutionGraph eg;
+			try {
+				eg = new ExecutionGraph(job, 1);
+			}
+			catch (GraphConversionException e) {
 				if (e.getCause() == null) {
 					return new JobSubmissionResult(AbstractJobResult.ReturnCode.ERROR, StringUtils.stringifyException(e));
 				} else {
@@ -458,17 +489,13 @@ public class JobManager implements DeploymentManager, ExtendedManagementProtocol
 			if (this.eventCollector != null) {
 				this.eventCollector.registerJob(eg, jobRunsWithProfiling, System.currentTimeMillis());
 			}
-	
-			// Check if profiling should be enabled for this job
-			if (jobRunsWithProfiling) {
-				this.profiler.registerProfilingJob(eg);
-	
-				if (this.eventCollector != null) {
-					this.profiler.registerForProfilingData(eg.getJobID(), this.eventCollector);
-				}
-	
-			}
-	
+			
+			
+			
+			
+			
+			
+			
 			// Register job with the dynamic input split assigner
 			this.inputSplitManager.registerJob(eg);
 	

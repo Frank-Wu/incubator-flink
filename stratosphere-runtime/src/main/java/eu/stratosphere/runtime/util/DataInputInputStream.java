@@ -1,4 +1,5 @@
 /***********************************************************************************************************************
+ *
  * Copyright (C) 2010-2013 by the Stratosphere project (http://stratosphere.eu)
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
@@ -9,20 +10,31 @@
  * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
+ *
  **********************************************************************************************************************/
 
-package eu.stratosphere.core.io;
+package eu.stratosphere.runtime.util;
 
+import java.io.DataInput;
+import java.io.IOException;
+import java.io.InputStream;
 
-/**
- * This interface must be implemented by all kind of input splits that can be assigned to input formats.
- */
-public interface InputSplit extends IOReadableWritable {
+public class DataInputInputStream extends InputStream {
+
+	private final DataInput in;
 	
-	/**
-	 * Returns the number of this input split.
-	 * 
-	 * @return the number of this input split
-	 */
-	int getSplitNumber();
+	
+	public DataInputInputStream(DataInput in) {
+		this.in = in;
+	}
+
+	@Override
+	public int read() throws IOException {
+		return in.readUnsignedByte();
+	}
+	
+	public int read(byte b[], int off, int len) throws IOException {
+		 in.readFully(b, off, len);
+		 return len;
+	}
 }

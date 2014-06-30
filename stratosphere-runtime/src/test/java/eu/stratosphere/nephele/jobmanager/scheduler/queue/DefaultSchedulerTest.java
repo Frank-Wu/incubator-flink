@@ -35,8 +35,8 @@ import eu.stratosphere.nephele.executiongraph.ExecutionVertex;
 import eu.stratosphere.nephele.executiongraph.GraphConversionException;
 import eu.stratosphere.nephele.jobgraph.JobGraph;
 import eu.stratosphere.nephele.jobgraph.JobGraphDefinitionException;
-import eu.stratosphere.nephele.jobgraph.InputFormatInputVertex;
-import eu.stratosphere.nephele.jobgraph.OutputFormatOutputVertex;
+import eu.stratosphere.nephele.jobgraph.InputFormatVertex;
+import eu.stratosphere.nephele.jobgraph.OutputFormatVertex;
 import eu.stratosphere.nephele.jobmanager.scheduler.SchedulingException;
 import eu.stratosphere.nephele.template.AbstractInvokable;
 import eu.stratosphere.runtime.io.api.RecordReader;
@@ -115,12 +115,12 @@ public class DefaultSchedulerTest {
 
 		final JobGraph jobGraph = new JobGraph("Job Graph");
 
-		final InputFormatInputVertex inputVertex = new InputFormatInputVertex("Input 1", jobGraph);
+		final InputFormatVertex inputVertex = new InputFormatVertex("Input 1", jobGraph);
 		inputVertex.setInvokableClass(InputTask.class);
 		inputVertex.setInputFormat(new DummyInputFormat());
 		inputVertex.setNumberOfSubtasks(1);
 
-		final OutputFormatOutputVertex outputVertex = new OutputFormatOutputVertex("Output 1", jobGraph);
+		final OutputFormatVertex outputVertex = new OutputFormatVertex("Output 1", jobGraph);
 		outputVertex.setInvokableClass(OutputTask.class);
 		outputVertex.setOutputFormat(new DummyOutputFormat());
 		outputVertex.setNumberOfSubtasks(1);

@@ -49,8 +49,8 @@ import eu.stratosphere.nephele.jobgraph.AbstractJobVertex;
 import eu.stratosphere.nephele.jobgraph.JobEdge;
 import eu.stratosphere.nephele.jobgraph.JobGraph;
 import eu.stratosphere.nephele.jobgraph.JobID;
-import eu.stratosphere.nephele.jobgraph.InputFormatInputVertex;
-import eu.stratosphere.nephele.jobgraph.OutputFormatOutputVertex;
+import eu.stratosphere.nephele.jobgraph.InputFormatVertex;
+import eu.stratosphere.nephele.jobgraph.OutputFormatVertex;
 import eu.stratosphere.nephele.taskmanager.ExecutorThreadFactory;
 import eu.stratosphere.nephele.template.AbstractInvokable;
 import eu.stratosphere.util.StringUtils;
@@ -66,117 +66,31 @@ import eu.stratosphere.util.StringUtils;
  */
 public class ExecutionGraph implements ExecutionListener {
 
-	/**
-	 * The log object used for debugging.
-	 */
+	/** The log object used for debugging. */
 	private static final Log LOG = LogFactory.getLog(ExecutionGraph.class);
 
-	/**
-	 * The ID of the job this graph has been built for.
-	 */
+	// --------------------------------------------------------------------------------------------
+	
+	/** The ID of the job this graph has been built for. */
 	private final JobID jobID;
 
-	/**
-	 * The name of the original job graph.
-	 */
+	/** The name of the original job graph. */
 	private final String jobName;
 
-	/**
-	 * Mapping of vertex IDs to vertices.
-	 */
-	private final ConcurrentMap<ExecutionVertexID, ExecutionVertex> vertexMap = new ConcurrentHashMap<ExecutionVertexID, ExecutionVertex>(
-		1024);
-
-	/**
-	 * Mapping of channel IDs to edges.
-	 */
-	private final ConcurrentMap<ChannelID, ExecutionEdge> edgeMap = new ConcurrentHashMap<ChannelID, ExecutionEdge>(
-		1024 * 1024);
-
-	/**
-	 * List of stages in the graph.
-	 */
-	private final CopyOnWriteArrayList<ExecutionStage> stages = new CopyOnWriteArrayList<ExecutionStage>();
-
-	/**
-	 * The executor service to asynchronously perform update operations to this graph.
-	 */
-	private final ExecutorService executorService = Executors.newSingleThreadExecutor(ExecutorThreadFactory.INSTANCE);
-
-	/**
-	 * Index to the current execution stage.
-	 */
-	private volatile int indexToCurrentExecutionStage = 0;
-
-	/**
-	 * The job configuration that was originally attached to the JobGraph.
-	 */
+	/** The job configuration that was originally attached to the JobGraph. */
 	private final Configuration jobConfiguration;
 
-	/**
-	 * The current status of the job which is represented by this execution graph.
-	 */
-	private final AtomicReference<InternalJobStatus> jobStatus = new AtomicReference<InternalJobStatus>(
-		InternalJobStatus.CREATED);
-
-	/**
-	 * The error description of the first task which causes this job to fail.
-	 */
-	private volatile String errorDescription = null;
-
-	/**
-	 * List of listeners which are notified in case the status of this job has changed.
-	 */
-	private final CopyOnWriteArrayList<JobStatusListener> jobStatusListeners = new CopyOnWriteArrayList<JobStatusListener>();
-
-	/**
-	 * List of listeners which are notified in case the execution stage of a job has changed.
-	 */
-	private final CopyOnWriteArrayList<ExecutionStageListener> executionStageListeners = new CopyOnWriteArrayList<ExecutionStageListener>();
-
-	/**
-	 * Private constructor used for duplicating execution vertices.
-	 * 
-	 * @param jobID
-	 *        the ID of the duplicated execution graph
-	 * @param jobName
-	 *        the name of the original job graph
-	 * @param jobConfiguration
-	 *        the configuration originally attached to the job graph
-	 */
-	private ExecutionGraph(final JobID jobID, final String jobName, final Configuration jobConfiguration) {
-		if (jobID == null) {
-			throw new IllegalArgumentException("Argument jobID must not be null");
-		}
-
-		this.jobID = jobID;
+	
+	
+	public ExecutionGraph(JobID jobId, String jobName, Configuration jobConfig, int defaultParallelism) {
+		this.jobID = jobId;
 		this.jobName = jobName;
-		this.jobConfiguration = jobConfiguration;
+		this.jobConfiguration = jobConfig;
 	}
 
-	/**
-	 * Creates a new execution graph from a job graph.
-	 * 
-	 * @param job
-	 *        the user's job graph
-	 * @param defaultParallelism
-	 *        defaultParallelism in case that nodes have no parallelism set
-	 * @throws GraphConversionException
-	 *         thrown if the job graph is not valid and no execution graph can be constructed from it
-	 */
-	public ExecutionGraph(JobGraph job, int defaultParallelism) throws GraphConversionException {
-		this(job.getJobID(), job.getName(), job.getJobConfiguration());
-
-		// Start constructing the new execution graph from given job graph
-		try {
-			constructExecutionGraph(job, defaultParallelism);
-		} catch (GraphConversionException e) {
-			throw e; // forward graph conversion exceptions
-		} catch (Exception e) {
-			throw new GraphConversionException(StringUtils.stringifyException(e));
-		}
-	}
-
+	
+	
+	
 	/**
 	 * Applies the user defined settings to the execution graph.
 	 * 
@@ -470,12 +384,12 @@ public class ExecutionGraph implements ExecutionListener {
 
 			final AbstractJobInputVertex jobInputVertex = (AbstractJobInputVertex) jobVertex;
 			
-			if (jobVertex instanceof InputFormatInputVertex) {
+			if (jobVertex instanceof InputFormatVertex) {
 				try {
 					// get a handle to the user code class loader
 					ClassLoader cl = LibraryCacheManager.getClassLoader(jobVertex.getJobGraph().getJobID());
 					
-					((InputFormatInputVertex) jobVertex).initializeInputFormatFromTaskConfig(cl);
+					((InputFormatVertex) jobVertex).initializeInputFormatFromTaskConfig(cl);
 				}
 				catch (Throwable t) {
 					throw new GraphConversionException("Could not deserialize input format.", t);
@@ -504,8 +418,8 @@ public class ExecutionGraph implements ExecutionListener {
 			groupVertex.setInputSplitType(inputSplitType);
 		}
 
-		if (jobVertex instanceof OutputFormatOutputVertex){
-			final OutputFormatOutputVertex jobOutputVertex = (OutputFormatOutputVertex) jobVertex;
+		if (jobVertex instanceof OutputFormatVertex){
+			final OutputFormatVertex jobOutputVertex = (OutputFormatVertex) jobVertex;
 			
 			try {
 				// get a handle to the user code class loader

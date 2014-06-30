@@ -19,38 +19,33 @@ import java.io.IOException;
 
 
 /**
- * A locatable input split is an input split referring to input data which is located on one or more hosts.
+ * An input split referring to input data which is located on one or more hosts.
  */
 public class LocatableInputSplit implements InputSplit {
 
-	/**
-	 * The number of the split.
-	 */
+	/** The number of the split. */
 	private int splitNumber;
 
-	/**
-	 * The names of the hosts storing the data this input split refers to.
-	 */
+	/** The names of the hosts storing the data this input split refers to. */
 	private String[] hostnames;
 
 	/**
-	 * Creates a new locatable input split.
+	 * Creates a new input split.
 	 * 
 	 * @param splitNumber
 	 *        the number of the split
 	 * @param hostnames
 	 *        the names of the hosts storing the data this input split refers to
 	 */
-	public LocatableInputSplit(final int splitNumber, final String[] hostnames) {
-
-		this.hostnames = hostnames;
+	public LocatableInputSplit(int splitNumber, String[] hostnames) {
+		this.splitNumber = splitNumber;
+		this.hostnames = hostnames == null ? new String[0] : hostnames;
 	}
 
 	/**
 	 * Default constructor for serialization/deserialization.
 	 */
-	public LocatableInputSplit() {
-	}
+	public LocatableInputSplit() {}
 
 	/**
 	 * Returns the names of the hosts storing the data this input split refers to
@@ -58,56 +53,31 @@ public class LocatableInputSplit implements InputSplit {
 	 * @return the names of the hosts storing the data this input split refers to
 	 */
 	public String[] getHostnames() {
-
-		if (this.hostnames == null) {
-			return new String[] {};
-		}
-
 		return this.hostnames;
 	}
 
-
 	@Override
-	public void write(final DataOutput out) throws IOException {
-
-		// Write the split number
+	public void write(DataOutput out) throws IOException {
 		out.writeInt(this.splitNumber);
-
-		// Write hostnames
-		if (this.hostnames == null) {
-			out.writeBoolean(false);
-		} else {
-			out.writeBoolean(true);
-			out.writeInt(this.hostnames.length);
-			for (int i = 0; i < this.hostnames.length; i++) {
-				StringRecord.writeString(out, this.hostnames[i]);
-			}
+		out.writeInt(this.hostnames.length);
+		for (int i = 0; i < this.hostnames.length; i++) {
+			StringRecord.writeString(out, this.hostnames[i]);
 		}
 	}
 
-
 	@Override
-	public void read(final DataInput in) throws IOException {
-
-		// Read the split number
+	public void read(DataInput in) throws IOException {
 		this.splitNumber = in.readInt();
 
-		// Read hostnames
-		if (in.readBoolean()) {
-			final int numHosts = in.readInt();
-			this.hostnames = new String[numHosts];
-			for (int i = 0; i < numHosts; i++) {
-				this.hostnames[i] = StringRecord.readString(in);
-			}
-		} else {
-			this.hostnames = null;
+		final int numHosts = in.readInt();
+		this.hostnames = new String[numHosts];
+		for (int i = 0; i < numHosts; i++) {
+			this.hostnames[i] = StringRecord.readString(in);
 		}
 	}
-
 
 	@Override
 	public int getSplitNumber() {
-
 		return this.splitNumber;
 	}
 }

@@ -37,8 +37,8 @@ import eu.stratosphere.nephele.jobgraph.DistributionPattern;
 import eu.stratosphere.nephele.jobgraph.JobGraph;
 import eu.stratosphere.nephele.jobgraph.JobGraphDefinitionException;
 import eu.stratosphere.nephele.jobgraph.JobID;
-import eu.stratosphere.nephele.jobgraph.InputFormatInputVertex;
-import eu.stratosphere.nephele.jobgraph.OutputFormatOutputVertex;
+import eu.stratosphere.nephele.jobgraph.InputFormatVertex;
+import eu.stratosphere.nephele.jobgraph.OutputFormatVertex;
 import eu.stratosphere.nephele.jobgraph.JobTaskVertex;
 import eu.stratosphere.nephele.util.ServerTestUtils;
 import eu.stratosphere.pact.runtime.task.DataSinkTask;
@@ -79,7 +79,7 @@ public class ExecutionGraphTest {
 			jobID = jg.getJobID();
 
 			// input vertex
-			final InputFormatInputVertex i1 = new InputFormatInputVertex("Input 1", jg);
+			final InputFormatVertex i1 = new InputFormatVertex("Input 1", jg);
 			i1.setNumberOfSubtasks(1);
 			i1.setInvokableClass(DataSourceTask.class);
 			TextInputFormat inputFormat = new TextInputFormat(new Path(inputFile.toURI()));
@@ -90,7 +90,7 @@ public class ExecutionGraphTest {
 			t1.setInvokableClass(ForwardTask1Input1Output.class);
 
 			// output vertex
-			final OutputFormatOutputVertex o1 = new OutputFormatOutputVertex("Output 1", jg);
+			final OutputFormatVertex o1 = new OutputFormatVertex("Output 1", jg);
 			o1.setNumberOfSubtasks(1);
 			o1.setInvokableClass(DataSinkTask.class);
 			o1.setOutputFormat(new DiscardingOuputFormat<Object>());
@@ -284,7 +284,7 @@ public class ExecutionGraphTest {
 			jobID = jg.getJobID();
 
 			// input vertex
-			final InputFormatInputVertex i1 = new InputFormatInputVertex("Input 1", jg);
+			final InputFormatVertex i1 = new InputFormatVertex("Input 1", jg);
 			i1.setInvokableClass(DataSourceTask.class);
 			i1.setInputFormat(new TextInputFormat(new Path(inputFile.toURI())));
 			i1.setNumberOfSubtasks(1);
@@ -294,7 +294,7 @@ public class ExecutionGraphTest {
 			t1.setInvokableClass(ForwardTask1Input1Output.class);
 
 			// output vertex
-			final OutputFormatOutputVertex o1 = new OutputFormatOutputVertex("Output 1", jg);
+			final OutputFormatVertex o1 = new OutputFormatVertex("Output 1", jg);
 			o1.setNumberOfSubtasks(1);
 			o1.setInvokableClass(DataSinkTask.class);
 			o1.setOutputFormat(new DiscardingOuputFormat<Object>());
@@ -389,12 +389,12 @@ public class ExecutionGraphTest {
 			jobID = jg.getJobID();
 
 			// input vertex
-			final InputFormatInputVertex i1 = new InputFormatInputVertex("Input 1", jg);
+			final InputFormatVertex i1 = new InputFormatVertex("Input 1", jg);
 			i1.setInvokableClass(DataSourceTask.class);
 			i1.setInputFormat(new TextInputFormat(new Path(inputFile1.toURI())));
 			i1.setNumberOfSubtasks(2);
 			
-			final InputFormatInputVertex i2 = new InputFormatInputVertex("Input 2", jg);
+			final InputFormatVertex i2 = new InputFormatVertex("Input 2", jg);
 			i2.setInvokableClass(DataSourceTask.class);
 			i2.setInputFormat(new TextInputFormat(new Path(inputFile2.toURI())));
 			i2.setNumberOfSubtasks(2);
@@ -412,7 +412,7 @@ public class ExecutionGraphTest {
 
 			
 			// output vertex
-			final OutputFormatOutputVertex o1 = new OutputFormatOutputVertex("Output 1", jg);
+			final OutputFormatVertex o1 = new OutputFormatVertex("Output 1", jg);
 			o1.setInvokableClass(DataSinkTask.class);
 			o1.setOutputFormat(new DiscardingOuputFormat<Object>());
 			o1.setNumberOfSubtasks(2);
@@ -633,11 +633,11 @@ public class ExecutionGraphTest {
 			jobID = jg.getJobID();
 
 			// input vertex
-			final InputFormatInputVertex i1 = new InputFormatInputVertex("Input 1", jg);
+			final InputFormatVertex i1 = new InputFormatVertex("Input 1", jg);
 			i1.setInvokableClass(DataSourceTask.class);
 			i1.setInputFormat(new TextInputFormat(new Path(inputFile1.toURI())));
 			i1.setNumberOfSubtasks(4);
-			final InputFormatInputVertex i2 = new InputFormatInputVertex("Input 2", jg);
+			final InputFormatVertex i2 = new InputFormatVertex("Input 2", jg);
 			i2.setInvokableClass(DataSourceTask.class);
 			i2.setInputFormat(new TextInputFormat(new Path(inputFile2.toURI())));
 			i2.setNumberOfSubtasks(4);
@@ -655,11 +655,11 @@ public class ExecutionGraphTest {
 			t4.setInvokableClass(ForwardTask1Input2Outputs.class);
 			t4.setNumberOfSubtasks(8);
 			// output vertex
-			final OutputFormatOutputVertex o1 = new OutputFormatOutputVertex("Output 1", jg);
+			final OutputFormatVertex o1 = new OutputFormatVertex("Output 1", jg);
 			o1.setInvokableClass(DataSinkTask.class);
 			o1.setOutputFormat(new DiscardingOuputFormat<Object>());
 			o1.setNumberOfSubtasks(4);
-			final OutputFormatOutputVertex o2 = new OutputFormatOutputVertex("Output 2", jg);
+			final OutputFormatVertex o2 = new OutputFormatVertex("Output 2", jg);
 			o2.setInvokableClass(DataSinkTask.class);
 			o2.setOutputFormat(new DiscardingOuputFormat<Object>());
 			o2.setNumberOfSubtasks(4);
@@ -747,7 +747,7 @@ public class ExecutionGraphTest {
 			jobID = jg.getJobID();
 
 			// input vertex
-			final InputFormatInputVertex input = new InputFormatInputVertex(inputTaskName, jg);
+			final InputFormatVertex input = new InputFormatVertex(inputTaskName, jg);
 			input.setInvokableClass(DataSourceTask.class);
 			input.setInputFormat(new TextInputFormat(new Path(inputFile.toURI())));
 			input.setNumberOfSubtasks(degreeOfParallelism);
@@ -758,7 +758,7 @@ public class ExecutionGraphTest {
 			cross.setNumberOfSubtasks(degreeOfParallelism);
 
 			// output vertex
-			final OutputFormatOutputVertex output = new OutputFormatOutputVertex(outputTaskName, jg);
+			final OutputFormatVertex output = new OutputFormatVertex(outputTaskName, jg);
 			output.setInvokableClass(DataSinkTask.class);
 			output.setOutputFormat(new DiscardingOuputFormat<Object>());
 			output.setNumberOfSubtasks(degreeOfParallelism);
@@ -877,7 +877,7 @@ public class ExecutionGraphTest {
 			jobID = jg.getJobID();
 
 			// input vertex
-			final InputFormatInputVertex input1 = new InputFormatInputVertex("Input 1", jg);
+			final InputFormatVertex input1 = new InputFormatVertex("Input 1", jg);
 			input1.setInvokableClass(DataSourceTask.class);
 			input1.setInputFormat(new TextInputFormat(new Path(inputFile1.toURI())));
 			input1.setNumberOfSubtasks(degreeOfParallelism);
@@ -900,7 +900,7 @@ public class ExecutionGraphTest {
 			forward3.setNumberOfSubtasks(degreeOfParallelism);
 
 			// output vertex
-			final OutputFormatOutputVertex output1 = new OutputFormatOutputVertex("Output 1", jg);
+			final OutputFormatVertex output1 = new OutputFormatVertex("Output 1", jg);
 			output1.setInvokableClass(DataSinkTask.class);
 			output1.setOutputFormat(new DiscardingOuputFormat<Object>());
 			output1.setNumberOfSubtasks(degreeOfParallelism);

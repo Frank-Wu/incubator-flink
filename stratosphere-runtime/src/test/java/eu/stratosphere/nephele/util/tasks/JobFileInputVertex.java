@@ -15,26 +15,23 @@
 
 package eu.stratosphere.nephele.util.tasks;
 
-
-import java.io.DataInput;
-import java.io.DataOutput;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import eu.stratosphere.api.common.io.InputSplitSource;
 import eu.stratosphere.core.fs.BlockLocation;
 import eu.stratosphere.core.fs.FileInputSplit;
 import eu.stratosphere.core.fs.FileStatus;
 import eu.stratosphere.core.fs.FileSystem;
 import eu.stratosphere.core.fs.Path;
-import eu.stratosphere.core.io.InputSplit;
-import eu.stratosphere.nephele.jobgraph.AbstractJobInputVertex;
-import eu.stratosphere.nephele.jobgraph.JobGraph;
+import eu.stratosphere.nephele.jobgraph.AbstractJobVertex;
 import eu.stratosphere.nephele.jobgraph.JobVertexID;
 
 
-public final class JobFileInputVertex extends AbstractJobInputVertex {
+public final class JobFileInputVertex extends AbstractJobVertex implements InputSplitSource<FileInputSplit> {
+
+	private static final long serialVersionUID = 1L;
 
 	/**
 	 * The fraction that the last split may be larger than the others.
@@ -47,8 +44,9 @@ public final class JobFileInputVertex extends AbstractJobInputVertex {
 	private Path path;
 
 
-	public JobFileInputVertex(String name, JobVertexID id, JobGraph jobGraph) {
-		super(name, id, jobGraph);
+	public JobFileInputVertex(String name, JobVertexID id) {
+		super(name, id);
+		setInputSplitSource(this);
 	}
 	
 	/**
@@ -56,21 +54,10 @@ public final class JobFileInputVertex extends AbstractJobInputVertex {
 	 * 
 	 * @param name
 	 *        the name of the new job file input vertex
-	 * @param jobGraph
-	 *        the job graph this vertex belongs to
 	 */
-	public JobFileInputVertex(String name, JobGraph jobGraph) {
-		this(name, null, jobGraph);
-	}
-
-	/**
-	 * Creates a new job file input vertex.
-	 * 
-	 * @param jobGraph
-	 *        the job graph this vertex belongs to
-	 */
-	public JobFileInputVertex(JobGraph jobGraph) {
-		this(null, jobGraph);
+	public JobFileInputVertex(String name) {
+		super(name);
+		setInputSplitSource(this);
 	}
 
 	/**
@@ -79,7 +66,7 @@ public final class JobFileInputVertex extends AbstractJobInputVertex {
 	 * @param path
 	 *        the path of the file the job file input vertex's task should read from
 	 */
-	public void setFilePath(final Path path) {
+	public void setFilePath(Path path) {
 		this.path = path;
 	}
 
@@ -94,35 +81,7 @@ public final class JobFileInputVertex extends AbstractJobInputVertex {
 	}
 
 	@Override
-	public void read(final DataInput in) throws IOException {
-		super.read(in);
-
-		// Read path of the input file
-		final boolean isNotNull = in.readBoolean();
-		if (isNotNull) {
-			this.path = new Path();
-			this.path.read(in);
-		}
-	}
-
-	@Override
-	public void write(final DataOutput out) throws IOException {
-		super.write(out);
-
-		// Write out the path of the input file
-		if (this.path == null) {
-			out.writeBoolean(false);
-		} else {
-			out.writeBoolean(true);
-			this.path.write(out);
-		}
-	}
-
-	// --------------------------------------------------------------------------------------------
-
-
-	@Override
-	public InputSplit[] getInputSplits(int minNumSplits) throws Exception {
+	public FileInputSplit[] createInputSplits(int minNumSplits) throws Exception {
 		final Path path = this.path;
 		final List<FileInputSplit> inputSplits = new ArrayList<FileInputSplit>();
 

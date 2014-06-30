@@ -15,6 +15,9 @@
 
 package eu.stratosphere.nephele.jobgraph;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * An intermediate data set is the data set produced by an operator - either a
  * source or any intermediate operation.
@@ -22,21 +25,62 @@ package eu.stratosphere.nephele.jobgraph;
  * Intermediate data sets may be read by other operators, materialized, or
  * discarded.
  */
-public class IntermediateDataSet {
+public class IntermediateDataSet implements java.io.Serializable {
+	
+	private static final long serialVersionUID = 1L;
+
 	
 	private final IntermediateDataSetID id; 		// the identifier
 	
 	private final AbstractJobVertex producer;		// the operation that produced this data set
-
+	
+	private final List<JobEdge> consumers = new ArrayList<JobEdge>();
+	
+	// --------------------------------------------------------------------------------------------
 	
 	public IntermediateDataSet(AbstractJobVertex producer) {
 		this(new IntermediateDataSetID(), producer);
 	}
 	
 	public IntermediateDataSet(IntermediateDataSetID id, AbstractJobVertex producer) {
+		if (id == null || producer == null) {
+			throw new NullPointerException();
+		}
+		
 		this.id = id;
 		this.producer = producer;
 	}
 	
+	public IntermediateDataSet(IntermediateDataSetID id) {
+		if (id == null) {
+			throw new NullPointerException();
+		}
+		
+		this.id = id;
+		this.producer = null;
+	}
+
+	// --------------------------------------------------------------------------------------------
 	
+	public IntermediateDataSetID getId() {
+		return id;
+	}
+
+	public AbstractJobVertex getProducer() {
+		return producer;
+	}
+	
+	public List<JobEdge> getConsumers() {
+		return this.consumers;
+	}
+	
+	public boolean isConnected() {
+		return this.producer != null;
+	}
+	
+	// --------------------------------------------------------------------------------------------
+	
+	public void addConsumer(JobEdge edge) {
+		this.consumers.add(edge);
+	}
 }

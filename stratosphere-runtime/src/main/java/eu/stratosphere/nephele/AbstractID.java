@@ -34,6 +34,7 @@ public class AbstractID implements IOReadableWritable, java.io.Serializable {
 
 	/** The size of the ID in byte */
 	public static final int SIZE = 2 * SIZE_OF_LONG;
+	
 
 	/** The upper part of the actual ID */
 	private long upperPart;
@@ -41,11 +42,12 @@ public class AbstractID implements IOReadableWritable, java.io.Serializable {
 	/** The lower part of the actual ID */
 	private long lowerPart;
 
+	
 	/**
 	 * Constructs a new ID with a specific bytes value.
 	 */
 	public AbstractID(byte[] bytes) {
-		if (bytes.length != SIZE) {
+		if (bytes == null || bytes.length != SIZE) {
 			throw new IllegalArgumentException("Argument bytes must by an array of " + SIZE + " bytes");
 		}
 
@@ -73,6 +75,9 @@ public class AbstractID implements IOReadableWritable, java.io.Serializable {
 	 * @param id the abstract ID to copy
 	 */
 	public AbstractID(AbstractID id) {
+		if (id == null) {
+			throw new IllegalArgumentException("Id must not be null.");
+		}
 		this.lowerPart = id.lowerPart;
 		this.upperPart = id.upperPart;
 	}

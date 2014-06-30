@@ -1,4 +1,5 @@
 /***********************************************************************************************************************
+ *
  * Copyright (C) 2010-2013 by the Stratosphere project (http://stratosphere.eu)
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
@@ -9,20 +10,32 @@
  * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
+ *
  **********************************************************************************************************************/
 
-package eu.stratosphere.core.io;
+package eu.stratosphere.api.common.io;
+
+import eu.stratosphere.core.io.InputSplit;
 
 
-/**
- * This interface must be implemented by all kind of input splits that can be assigned to input formats.
- */
-public interface InputSplit extends IOReadableWritable {
+public interface InputSplitSource<T extends InputSplit> extends java.io.Serializable {
 	
 	/**
-	 * Returns the number of this input split.
-	 * 
-	 * @return the number of this input split
+	 * Returns the input split type of the input splits.
+	 *
+	 * @return The input split type class.
 	 */
-	int getSplitNumber();
+	Class<? extends T> getInputSplitType();
+
+	/**
+	 * Computes the input splits. The given minimum number of splits is a hint as to how
+	 * many splits are desired.
+	 *
+	 * @param minNumSplits Number of minimal input splits, as a hint.
+	 * @return An array of input splits.
+	 * 
+	 * @throws Exception Exceptions when creating the input splits may be forwarded and will cause the
+	 *                   execution to permanently fail.
+	 */
+	T[] createInputSplits(int minNumSplits) throws Exception;
 }
