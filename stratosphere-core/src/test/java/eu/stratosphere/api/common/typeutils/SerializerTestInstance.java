@@ -62,11 +62,13 @@ public class SerializerTestInstance<T> extends SerializerTestBase<T> {
 	public void testAll() {
 		testInstantiate();
 		testGetLength();
+		testCopy();
 		testCopyIntoNewElements();
 		testCopyIntoReusedElements();
 		testSerializeIndividually();
 		testSerializeIndividuallyReusingValues();
-		testSerializeAsSequence();
+		testSerializeAsSequenceNoReuse();
+		testSerializeAsSequenceReusingValues();
 		testSerializedCopyIndividually();
 		testSerializedCopyAsSequence();
 		testSerializabilityAndEquals();

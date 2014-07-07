@@ -77,10 +77,28 @@ public final class TupleSerializer<T extends Tuple> extends TypeSerializer<T> {
 			return t;
 		}
 		catch (Exception e) {
-			throw new RuntimeException("Cannot instantiate tuple.", e);
+			throw new RuntimeException("Cannot instantiate tuple class " + tupleClass.getName(), e);
 		}
 	}
 
+	@Override
+	public T copy(T from) {
+		T tuple;
+		try {
+			tuple = tupleClass.newInstance();
+		}
+		catch (Exception e) {
+			throw new RuntimeException("Cannot instantiate tuple class " + tupleClass.getName(), e);
+		}
+		
+		for (int i = 0; i < arity; i++) {
+			Object copy = fieldSerializers[i].copy(from.getField(i));
+			tuple.setField(copy, i);
+		}
+		
+		return tuple;
+	}
+	
 	@Override
 	public T copy(T from, T reuse) {
 		for (int i = 0; i < arity; i++) {
@@ -105,6 +123,23 @@ public final class TupleSerializer<T extends Tuple> extends TypeSerializer<T> {
 		}
 	}
 
+	@Override
+	public T deserialize(DataInputView source) throws IOException {
+		T tuple;
+		try {
+			tuple = tupleClass.newInstance();
+		}
+		catch (Exception e) {
+			throw new RuntimeException("Cannot instantiate tuple class " + tupleClass.getName(), e);
+		}
+		
+		for (int i = 0; i < arity; i++) {
+			Object field = fieldSerializers[i].deserialize(source);
+			tuple.setField(field, i);
+		}
+		return tuple;
+	}
+	
 	@Override
 	public T deserialize(T reuse, DataInputView source) throws IOException {
 		for (int i = 0; i < arity; i++) {

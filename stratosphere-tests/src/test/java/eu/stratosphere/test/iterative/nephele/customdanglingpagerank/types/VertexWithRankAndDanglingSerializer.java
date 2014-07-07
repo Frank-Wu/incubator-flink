@@ -14,11 +14,11 @@ package eu.stratosphere.test.iterative.nephele.customdanglingpagerank.types;
 
 import java.io.IOException;
 
-import eu.stratosphere.api.common.typeutils.TypeSerializer;
+import eu.stratosphere.api.common.typeutils.TypeSerializerSingleton;
 import eu.stratosphere.core.memory.DataInputView;
 import eu.stratosphere.core.memory.DataOutputView;
 
-public final class VertexWithRankAndDanglingSerializer extends TypeSerializer<VertexWithRankAndDangling> {
+public final class VertexWithRankAndDanglingSerializer extends TypeSerializerSingleton<VertexWithRankAndDangling> {
 
 	private static final long serialVersionUID = 1L;
 	
@@ -38,6 +38,11 @@ public final class VertexWithRankAndDanglingSerializer extends TypeSerializer<Ve
 		return new VertexWithRankAndDangling();
 	}
 
+	@Override
+	public VertexWithRankAndDangling copy(VertexWithRankAndDangling from) {
+		return new VertexWithRankAndDangling(from.getVertexID(), from.getRank(), from.isDangling());
+	}
+	
 	@Override
 	public VertexWithRankAndDangling copy(VertexWithRankAndDangling from, VertexWithRankAndDangling reuse) {
 		reuse.setVertexID(from.getVertexID());
@@ -59,6 +64,11 @@ public final class VertexWithRankAndDanglingSerializer extends TypeSerializer<Ve
 	}
 
 	@Override
+	public VertexWithRankAndDangling deserialize(DataInputView source) throws IOException {
+		return new VertexWithRankAndDangling(source.readLong(), source.readDouble(), source.readBoolean());
+	}
+	
+	@Override
 	public VertexWithRankAndDangling deserialize(VertexWithRankAndDangling target, DataInputView source) throws IOException {
 		target.setVertexID(source.readLong());
 		target.setRank(source.readDouble());
@@ -69,17 +79,5 @@ public final class VertexWithRankAndDanglingSerializer extends TypeSerializer<Ve
 	@Override
 	public void copy(DataInputView source, DataOutputView target) throws IOException {
 		target.write(source, 17);
-	}
-	
-	// --------------------------------------------------------------------------------------------
-	
-	@Override
-	public int hashCode() {
-		return 2;
-	}
-	
-	@Override
-	public boolean equals(Object obj) {
-		return obj != null && obj.getClass() == VertexWithRankAndDanglingSerializer.class;
 	}
 }

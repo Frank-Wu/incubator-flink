@@ -12,18 +12,20 @@
  * specific language governing permissions and limitations under the License.
  *
  **********************************************************************************************************************/
-package eu.stratosphere.api.java.aggregation;
 
+package eu.stratosphere.api.common.typeutils;
 
-/**
- * @param <T> The type to be aggregated.
- */
-public abstract class AggregationFunction<T> implements java.io.Serializable {
+public abstract class TypeSerializerSingleton<T> extends TypeSerializer<T> {
+	
 	private static final long serialVersionUID = 1L;
 
-	public abstract void initializeAggregate();
+	@Override
+	public int hashCode() {
+		return getClass().hashCode();
+	}
 	
-	public abstract void aggregate(T value);
-	
-	public abstract T getAggregate();
+	@Override
+	public boolean equals(Object obj) {
+		return obj != null && obj.getClass() == this.getClass();
+	}
 }

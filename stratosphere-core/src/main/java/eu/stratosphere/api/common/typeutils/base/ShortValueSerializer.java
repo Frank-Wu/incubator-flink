@@ -16,13 +16,13 @@ package eu.stratosphere.api.common.typeutils.base;
 
 import java.io.IOException;
 
-import eu.stratosphere.api.common.typeutils.TypeSerializer;
+import eu.stratosphere.api.common.typeutils.TypeSerializerSingleton;
 import eu.stratosphere.core.memory.DataInputView;
 import eu.stratosphere.core.memory.DataOutputView;
 import eu.stratosphere.types.ShortValue;
 
 
-public class ShortValueSerializer extends TypeSerializer<ShortValue> {
+public final class ShortValueSerializer extends TypeSerializerSingleton<ShortValue> {
 
 	private static final long serialVersionUID = 1L;
 	
@@ -45,6 +45,11 @@ public class ShortValueSerializer extends TypeSerializer<ShortValue> {
 	}
 
 	@Override
+	public ShortValue copy(ShortValue from) {
+		return copy(from, new ShortValue());
+	}
+	
+	@Override
 	public ShortValue copy(ShortValue from, ShortValue reuse) {
 		reuse.setValue(from.getValue());
 		return reuse;
@@ -60,6 +65,11 @@ public class ShortValueSerializer extends TypeSerializer<ShortValue> {
 		record.write(target);
 	}
 
+	@Override
+	public ShortValue deserialize(DataInputView source) throws IOException {
+		return deserialize(new ShortValue(), source);
+	}
+	
 	@Override
 	public ShortValue deserialize(ShortValue reuse, DataInputView source) throws IOException {
 		reuse.read(source);

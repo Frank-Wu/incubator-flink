@@ -16,12 +16,12 @@ package eu.stratosphere.api.common.typeutils.base;
 
 import java.io.IOException;
 
-import eu.stratosphere.api.common.typeutils.TypeSerializer;
+import eu.stratosphere.api.common.typeutils.TypeSerializerSingleton;
 import eu.stratosphere.core.memory.DataInputView;
 import eu.stratosphere.core.memory.DataOutputView;
 
 
-public class CharSerializer extends TypeSerializer<Character> {
+public final class CharSerializer extends TypeSerializerSingleton<Character> {
 
 	private static final long serialVersionUID = 1L;
 	
@@ -46,6 +46,11 @@ public class CharSerializer extends TypeSerializer<Character> {
 	}
 
 	@Override
+	public Character copy(Character from) {
+		return from;
+	}
+	
+	@Override
 	public Character copy(Character from, Character reuse) {
 		return from;
 	}
@@ -61,8 +66,13 @@ public class CharSerializer extends TypeSerializer<Character> {
 	}
 
 	@Override
-	public Character deserialize(Character reuse, DataInputView source) throws IOException {
+	public Character deserialize(DataInputView source) throws IOException {
 		return Character.valueOf(source.readChar());
+	}
+	
+	@Override
+	public Character deserialize(Character reuse, DataInputView source) throws IOException {
+		return deserialize(source);
 	}
 
 	@Override

@@ -16,14 +16,14 @@ package eu.stratosphere.api.common.typeutils.base.array;
 
 import java.io.IOException;
 
-import eu.stratosphere.api.common.typeutils.TypeSerializer;
+import eu.stratosphere.api.common.typeutils.TypeSerializerSingleton;
 import eu.stratosphere.core.memory.DataInputView;
 import eu.stratosphere.core.memory.DataOutputView;
 
 /**
  * A serializer for long arrays.
  */
-public class LongPrimitiveArraySerializer extends TypeSerializer<long[]>{
+public final class LongPrimitiveArraySerializer extends TypeSerializerSingleton<long[]>{
 
 	private static final long serialVersionUID = 1L;
 	
@@ -48,10 +48,15 @@ public class LongPrimitiveArraySerializer extends TypeSerializer<long[]>{
 	}
 
 	@Override
+	public long[] copy(long[] from) {
+		long[] result = new long[from.length];
+		System.arraycopy(from, 0, result, 0, from.length);
+		return result;
+	}
+	
+	@Override
 	public long[] copy(long[] from, long[] reuse) {
-		reuse = new long[from.length];
-		System.arraycopy(from, 0, reuse, 0, from.length);
-		return reuse;
+		return copy(from);
 	}
 
 	@Override
@@ -73,17 +78,21 @@ public class LongPrimitiveArraySerializer extends TypeSerializer<long[]>{
 		}
 	}
 
-
 	@Override
-	public long[] deserialize(long[] reuse, DataInputView source) throws IOException {
+	public long[] deserialize(DataInputView source) throws IOException {
 		final int len = source.readInt();
-		reuse = new long[len];
+		long[] array = new long[len];
 		
 		for (int i = 0; i < len; i++) {
-			reuse[i] = source.readLong();
+			array[i] = source.readLong();
 		}
 		
-		return reuse;
+		return array;
+	}
+	
+	@Override
+	public long[] deserialize(long[] reuse, DataInputView source) throws IOException {
+		return deserialize(source);
 	}
 
 	@Override

@@ -23,9 +23,11 @@ import eu.stratosphere.core.memory.DataOutputView;
 
 
 /**
+ * A serializer for arrays of objects.
+ * 
  * @param <C> The component type
  */
-public class GenericArraySerializer<C> extends TypeSerializer<C[]> {
+public final class GenericArraySerializer<C> extends TypeSerializer<C[]> {
 
 	private static final long serialVersionUID = 1L;
 
@@ -34,7 +36,6 @@ public class GenericArraySerializer<C> extends TypeSerializer<C[]> {
 	private final TypeSerializer<C> componentSerializer;
 	
 	private final C[] EMPTY;
-	
 	
 	
 	public GenericArraySerializer(Class<C> componentClass, TypeSerializer<C> componentSerializer) {
@@ -64,7 +65,7 @@ public class GenericArraySerializer<C> extends TypeSerializer<C[]> {
 	}
 
 	@Override
-	public C[] copy(C[] from, C[] reuse) {
+	public C[] copy(C[] from) {
 		C[] copy = create(from.length);
 
 		for (int i = 0; i < copy.length; i++) {
@@ -72,6 +73,11 @@ public class GenericArraySerializer<C> extends TypeSerializer<C[]> {
 		}
 
 		return copy;
+	}
+	
+	@Override
+	public C[] copy(C[] from, C[] reuse) {
+		return copy(from);
 	}
 
 	@Override
@@ -94,6 +100,24 @@ public class GenericArraySerializer<C> extends TypeSerializer<C[]> {
 	}
 
 	@Override
+	public C[] deserialize(DataInputView source) throws IOException {
+		int len = source.readInt();
+		
+		C[] array = create(len);
+		
+		for (int i = 0; i < len; i++) {
+			boolean isNonNull = source.readBoolean();
+			if (isNonNull) {
+				array[i] = componentSerializer.deserialize(source);
+			} else {
+				array[i] = null;
+			}
+		}
+		
+		return array;
+	}
+	
+	@Override
 	public C[] deserialize(C[] reuse, DataInputView source) throws IOException {
 		int len = source.readInt();
 		
@@ -104,7 +128,13 @@ public class GenericArraySerializer<C> extends TypeSerializer<C[]> {
 		for (int i = 0; i < len; i++) {
 			boolean isNonNull = source.readBoolean();
 			if (isNonNull) {
-				reuse[i] = componentSerializer.deserialize(componentSerializer.createInstance(), source);
+				C ri = reuse[i];
+				if (ri == null) {
+					ri = componentSerializer.deserialize(source);
+				} else {
+					ri = componentSerializer.deserialize(ri, source);
+				}
+				reuse[i] = ri;
 			} else {
 				reuse[i] = null;
 			}

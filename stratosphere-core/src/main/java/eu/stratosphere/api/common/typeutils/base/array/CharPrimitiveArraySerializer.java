@@ -16,14 +16,14 @@ package eu.stratosphere.api.common.typeutils.base.array;
 
 import java.io.IOException;
 
-import eu.stratosphere.api.common.typeutils.TypeSerializer;
+import eu.stratosphere.api.common.typeutils.TypeSerializerSingleton;
 import eu.stratosphere.core.memory.DataInputView;
 import eu.stratosphere.core.memory.DataOutputView;
 
 /**
  * A serializer for long arrays.
  */
-public class CharPrimitiveArraySerializer extends TypeSerializer<char[]>{
+public final class CharPrimitiveArraySerializer extends TypeSerializerSingleton<char[]>{
 
 	private static final long serialVersionUID = 1L;
 	
@@ -48,10 +48,15 @@ public class CharPrimitiveArraySerializer extends TypeSerializer<char[]>{
 	}
 
 	@Override
-	public char[] copy(char[] from, char[] reuse) {
+	public char[] copy(char[] from) {
 		char[] copy = new char[from.length];
 		System.arraycopy(from, 0, copy, 0, from.length);
 		return copy;
+	}
+	
+	@Override
+	public char[] copy(char[] from, char[] reuse) {
+		return copy(from);
 	}
 
 	@Override
@@ -73,17 +78,21 @@ public class CharPrimitiveArraySerializer extends TypeSerializer<char[]>{
 		}
 	}
 
+	@Override
+	public char[] deserialize(DataInputView source) throws IOException {
+		final int len = source.readInt();
+		char[] result = new char[len];
+		
+		for (int i = 0; i < len; i++) {
+			result[i] = source.readChar();
+		}
+		
+		return result;
+	}
 
 	@Override
 	public char[] deserialize(char[] reuse, DataInputView source) throws IOException {
-		final int len = source.readInt();
-		reuse = new char[len];
-		
-		for (int i = 0; i < len; i++) {
-			reuse[i] = source.readChar();
-		}
-		
-		return reuse;
+		return deserialize(source);
 	}
 
 	@Override

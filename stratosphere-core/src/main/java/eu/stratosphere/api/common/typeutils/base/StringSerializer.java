@@ -16,13 +16,13 @@ package eu.stratosphere.api.common.typeutils.base;
 
 import java.io.IOException;
 
-import eu.stratosphere.api.common.typeutils.TypeSerializer;
+import eu.stratosphere.api.common.typeutils.TypeSerializerSingleton;
 import eu.stratosphere.core.memory.DataInputView;
 import eu.stratosphere.core.memory.DataOutputView;
 import eu.stratosphere.types.StringValue;
 
 
-public class StringSerializer extends TypeSerializer<String> {
+public final class StringSerializer extends TypeSerializerSingleton<String> {
 
 	private static final long serialVersionUID = 1L;
 	
@@ -46,6 +46,11 @@ public class StringSerializer extends TypeSerializer<String> {
 	}
 
 	@Override
+	public String copy(String from) {
+		return from;
+	}
+	
+	@Override
 	public String copy(String from, String reuse) {
 		return from;
 	}
@@ -61,8 +66,13 @@ public class StringSerializer extends TypeSerializer<String> {
 	}
 
 	@Override
-	public String deserialize(String record, DataInputView source) throws IOException {
+	public String deserialize(DataInputView source) throws IOException {
 		return StringValue.readString(source);
+	}
+	
+	@Override
+	public String deserialize(String record, DataInputView source) throws IOException {
+		return deserialize(source);
 	}
 
 	@Override

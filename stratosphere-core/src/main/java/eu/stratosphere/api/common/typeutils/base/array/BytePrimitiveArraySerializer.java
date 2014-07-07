@@ -16,14 +16,14 @@ package eu.stratosphere.api.common.typeutils.base.array;
 
 import java.io.IOException;
 
-import eu.stratosphere.api.common.typeutils.TypeSerializer;
+import eu.stratosphere.api.common.typeutils.TypeSerializerSingleton;
 import eu.stratosphere.core.memory.DataInputView;
 import eu.stratosphere.core.memory.DataOutputView;
 
 /**
  * A serializer for long arrays.
  */
-public class BytePrimitiveArraySerializer extends TypeSerializer<byte[]>{
+public final class BytePrimitiveArraySerializer extends TypeSerializerSingleton<byte[]>{
 
 	private static final long serialVersionUID = 1L;
 	
@@ -47,17 +47,21 @@ public class BytePrimitiveArraySerializer extends TypeSerializer<byte[]>{
 	}
 
 	@Override
-	public byte[] copy(byte[] from, byte[] reuse) {
+	public byte[] copy(byte[] from) {
 		byte[] copy = new byte[from.length];
 		System.arraycopy(from, 0, copy, 0, from.length);
 		return copy;
+	}
+	
+	@Override
+	public byte[] copy(byte[] from, byte[] reuse) {
+		return copy(from);
 	}
 
 	@Override
 	public int getLength() {
 		return -1;
 	}
-
 
 	@Override
 	public void serialize(byte[] record, DataOutputView target) throws IOException {
@@ -70,13 +74,17 @@ public class BytePrimitiveArraySerializer extends TypeSerializer<byte[]>{
 		target.write(record);
 	}
 
-
+	@Override
+	public byte[] deserialize(DataInputView source) throws IOException {
+		final int len = source.readInt();
+		byte[] result = new byte[len];
+		source.readFully(result);
+		return result;
+	}
+	
 	@Override
 	public byte[] deserialize(byte[] reuse, DataInputView source) throws IOException {
-		final int len = source.readInt();
-		reuse = new byte[len];
-		source.readFully(reuse);
-		return reuse;
+		return deserialize(source);
 	}
 
 	@Override

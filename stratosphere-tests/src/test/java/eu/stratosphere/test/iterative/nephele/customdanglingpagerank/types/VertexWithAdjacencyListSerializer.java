@@ -14,11 +14,11 @@ package eu.stratosphere.test.iterative.nephele.customdanglingpagerank.types;
 
 import java.io.IOException;
 
-import eu.stratosphere.api.common.typeutils.TypeSerializer;
+import eu.stratosphere.api.common.typeutils.TypeSerializerSingleton;
 import eu.stratosphere.core.memory.DataInputView;
 import eu.stratosphere.core.memory.DataOutputView;
 
-public final class VertexWithAdjacencyListSerializer extends TypeSerializer<VertexWithAdjacencyList> {
+public final class VertexWithAdjacencyListSerializer extends TypeSerializerSingleton<VertexWithAdjacencyList> {
 
 	private static final long serialVersionUID = 1L;
 	
@@ -38,6 +38,14 @@ public final class VertexWithAdjacencyListSerializer extends TypeSerializer<Vert
 		return new VertexWithAdjacencyList();
 	}
 
+	@Override
+	public VertexWithAdjacencyList copy(VertexWithAdjacencyList from) {
+		VertexWithAdjacencyList copy = new VertexWithAdjacencyList(from.getVertexID(), new long[from.getNumTargets()]);
+		copy.setNumTargets(from.getNumTargets());
+		System.arraycopy(from.getTargets(), 0, copy.getTargets(), 0, from.getNumTargets());
+		return copy;
+	}
+	
 	@Override
 	public VertexWithAdjacencyList copy(VertexWithAdjacencyList from, VertexWithAdjacencyList reuse) {
 		if (reuse.getTargets().length < from.getTargets().length) {
@@ -69,6 +77,11 @@ public final class VertexWithAdjacencyListSerializer extends TypeSerializer<Vert
 	}
 
 	@Override
+	public VertexWithAdjacencyList deserialize(DataInputView source) throws IOException {
+		return deserialize(new VertexWithAdjacencyList(), source);
+	}
+	
+	@Override
 	public VertexWithAdjacencyList deserialize(VertexWithAdjacencyList target, DataInputView source) throws IOException {
 		target.setVertexID(source.readLong());
 		
@@ -94,17 +107,5 @@ public final class VertexWithAdjacencyListSerializer extends TypeSerializer<Vert
 		final int numTargets = source.readInt();
 		target.writeInt(numTargets);
 		target.write(source, numTargets * 8);
-	}
-	
-	// --------------------------------------------------------------------------------------------
-	
-	@Override
-	public int hashCode() {
-		return 3;
-	}
-	
-	@Override
-	public boolean equals(Object obj) {
-		return obj != null && obj.getClass() == VertexWithAdjacencyListSerializer.class;
 	}
 }

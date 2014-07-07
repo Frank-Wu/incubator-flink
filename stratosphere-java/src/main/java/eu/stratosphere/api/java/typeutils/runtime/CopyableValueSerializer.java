@@ -51,7 +51,12 @@ public class CopyableValueSerializer<T extends CopyableValue<T>> extends TypeSer
 	public T createInstance() {
 		return InstantiationUtil.instantiate(this.valueClass);
 	}
-
+	
+	@Override
+	public T copy(T from) {
+		return copy(from, createInstance());
+	}
+	
 	@Override
 	public T copy(T from, T reuse) {
 		from.copyTo(reuse);
@@ -70,6 +75,11 @@ public class CopyableValueSerializer<T extends CopyableValue<T>> extends TypeSer
 	}
 
 	@Override
+	public T deserialize(DataInputView source) throws IOException {
+		return deserialize(createInstance(), source);
+	}
+	
+	@Override
 	public T deserialize(T reuse, DataInputView source) throws IOException {
 		reuse.read(source);
 		return reuse;
@@ -86,6 +96,21 @@ public class CopyableValueSerializer<T extends CopyableValue<T>> extends TypeSer
 	private final void ensureInstanceInstantiated() {
 		if (instance == null) {
 			instance = createInstance();
+		}
+	}
+	
+	@Override
+	public int hashCode() {
+		return this.valueClass.hashCode() + 9231;
+	}
+	
+	@Override
+	public boolean equals(Object obj) {
+		if (obj.getClass() == CopyableValueSerializer.class) {
+			CopyableValueSerializer<?> other = (CopyableValueSerializer<?>) obj;
+			return this.valueClass == other.valueClass;
+		} else {
+			return false;
 		}
 	}
 }

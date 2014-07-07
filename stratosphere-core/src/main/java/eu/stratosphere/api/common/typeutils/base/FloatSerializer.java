@@ -14,14 +14,14 @@
  **********************************************************************************************************************/
 package eu.stratosphere.api.common.typeutils.base;
 
-import eu.stratosphere.api.common.typeutils.TypeSerializer;
+import eu.stratosphere.api.common.typeutils.TypeSerializerSingleton;
 import eu.stratosphere.core.memory.DataInputView;
 import eu.stratosphere.core.memory.DataOutputView;
 
 import java.io.IOException;
 
 
-public class FloatSerializer extends TypeSerializer<Float> {
+public final class FloatSerializer extends TypeSerializerSingleton<Float> {
 
 	private static final long serialVersionUID = 1L;
 	
@@ -46,6 +46,11 @@ public class FloatSerializer extends TypeSerializer<Float> {
 	}
 
 	@Override
+	public Float copy(Float from) {
+		return from;
+	}
+	
+	@Override
 	public Float copy(Float from, Float reuse) {
 		return from;
 	}
@@ -61,8 +66,13 @@ public class FloatSerializer extends TypeSerializer<Float> {
 	}
 
 	@Override
-	public Float deserialize(Float reuse, DataInputView source) throws IOException {
+	public Float deserialize(DataInputView source) throws IOException {
 		return Float.valueOf(source.readFloat());
+	}
+	
+	@Override
+	public Float deserialize(Float reuse, DataInputView source) throws IOException {
+		return deserialize(source);
 	}
 
 	@Override

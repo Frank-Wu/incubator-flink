@@ -16,14 +16,14 @@ package eu.stratosphere.api.common.typeutils.base.array;
 
 import java.io.IOException;
 
-import eu.stratosphere.api.common.typeutils.TypeSerializer;
+import eu.stratosphere.api.common.typeutils.TypeSerializerSingleton;
 import eu.stratosphere.core.memory.DataInputView;
 import eu.stratosphere.core.memory.DataOutputView;
 
 /**
- * A serializer for long arrays.
+ * A serializer for short arrays.
  */
-public class ShortPrimitiveArraySerializer extends TypeSerializer<short[]>{
+public final class ShortPrimitiveArraySerializer extends TypeSerializerSingleton<short[]>{
 
 	private static final long serialVersionUID = 1L;
 	
@@ -48,10 +48,15 @@ public class ShortPrimitiveArraySerializer extends TypeSerializer<short[]>{
 	}
 
 	@Override
-	public short[] copy(short[] from, short[] reuse) {
+	public short[] copy(short[] from) {
 		short[] copy = new short[from.length];
 		System.arraycopy(from, 0, copy, 0, from.length);
 		return copy;
+	}
+	
+	@Override
+	public short[] copy(short[] from, short[] reuse) {
+		return copy(from);
 	}
 
 	@Override
@@ -73,17 +78,21 @@ public class ShortPrimitiveArraySerializer extends TypeSerializer<short[]>{
 		}
 	}
 
+	@Override
+	public short[] deserialize(DataInputView source) throws IOException {
+		final int len = source.readInt();
+		short[] array = new short[len];
+		
+		for (int i = 0; i < len; i++) {
+			array[i] = source.readShort();
+		}
+		
+		return array;
+	}
 
 	@Override
 	public short[] deserialize(short[] reuse, DataInputView source) throws IOException {
-		final int len = source.readInt();
-		reuse = new short[len];
-		
-		for (int i = 0; i < len; i++) {
-			reuse[i] = source.readShort();
-		}
-		
-		return reuse;
+		return deserialize(source);
 	}
 
 	@Override

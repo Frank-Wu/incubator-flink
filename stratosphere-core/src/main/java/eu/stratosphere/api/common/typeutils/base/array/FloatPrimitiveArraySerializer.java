@@ -16,14 +16,14 @@ package eu.stratosphere.api.common.typeutils.base.array;
 
 import java.io.IOException;
 
-import eu.stratosphere.api.common.typeutils.TypeSerializer;
+import eu.stratosphere.api.common.typeutils.TypeSerializerSingleton;
 import eu.stratosphere.core.memory.DataInputView;
 import eu.stratosphere.core.memory.DataOutputView;
 
 /**
  * A serializer for long arrays.
  */
-public class FloatPrimitiveArraySerializer extends TypeSerializer<float[]>{
+public final class FloatPrimitiveArraySerializer extends TypeSerializerSingleton<float[]>{
 
 	private static final long serialVersionUID = 1L;
 	
@@ -48,10 +48,15 @@ public class FloatPrimitiveArraySerializer extends TypeSerializer<float[]>{
 	}
 
 	@Override
-	public float[] copy(float[] from, float[] reuse) {
+	public float[] copy(float[] from) {
 		float[] copy = new float[from.length];
 		System.arraycopy(from, 0, copy, 0, from.length);
 		return copy;
+	}
+	
+	@Override
+	public float[] copy(float[] from, float[] reuse) {
+		return copy(from);
 	}
 
 	@Override
@@ -73,17 +78,21 @@ public class FloatPrimitiveArraySerializer extends TypeSerializer<float[]>{
 		}
 	}
 
-
 	@Override
-	public float[] deserialize(float[] reuse, DataInputView source) throws IOException {
+	public float[] deserialize(DataInputView source) throws IOException {
 		final int len = source.readInt();
-		reuse = new float[len];
+		float[] result = new float[len];
 		
 		for (int i = 0; i < len; i++) {
-			reuse[i] = source.readFloat();
+			result[i] = source.readFloat();
 		}
 		
-		return reuse;
+		return result;
+	}
+	
+	@Override
+	public float[] deserialize(float[] reuse, DataInputView source) throws IOException {
+		return deserialize(source);
 	}
 
 	@Override

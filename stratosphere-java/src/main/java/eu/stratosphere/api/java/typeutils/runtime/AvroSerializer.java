@@ -33,7 +33,7 @@ import eu.stratosphere.util.InstantiationUtil;
  *
  * @param <T> The type serialized.
  */
-public class AvroSerializer<T> extends TypeSerializer<T> {
+public final class AvroSerializer<T> extends TypeSerializer<T> {
 
 	private static final long serialVersionUID = 1L;
 	
@@ -86,10 +86,15 @@ public class AvroSerializer<T> extends TypeSerializer<T> {
 	}
 
 	@Override
+	public T copy(T from) {
+		checkKryoInitialized();
+		return this.kryo.copy(from);
+	}
+	
+	@Override
 	public T copy(T from, T reuse) {
 		checkKryoInitialized();
-		reuse = this.kryo.copy(from);
-		return reuse;
+		return this.kryo.copy(from);
 	}
 
 	@Override
@@ -102,6 +107,13 @@ public class AvroSerializer<T> extends TypeSerializer<T> {
 		checkAvroInitialized();
 		this.encoder.setOut(target);
 		this.writer.write(value, this.encoder);
+	}
+	
+	@Override
+	public T deserialize(DataInputView source) throws IOException {
+		checkAvroInitialized();
+		this.decoder.setIn(source);
+		return this.reader.read(null, this.decoder);
 	}
 
 	@Override
@@ -141,6 +153,23 @@ public class AvroSerializer<T> extends TypeSerializer<T> {
 			this.kryo = new Kryo();
 			this.kryo.setAsmEnabled(true);
 			this.kryo.register(type);
+		}
+	}
+	
+	// --------------------------------------------------------------------------------------------
+	
+	@Override
+	public int hashCode() {
+		return 0x42fba55c + this.type.hashCode() + this.typeToInstantiate.hashCode();
+	}
+	
+	@Override
+	public boolean equals(Object obj) {
+		if (obj.getClass() == AvroSerializer.class) {
+			AvroSerializer<?> other = (AvroSerializer<?>) obj;
+			return this.type == other.type && this.typeToInstantiate == other.typeToInstantiate;
+		} else {
+			return false;
 		}
 	}
 }

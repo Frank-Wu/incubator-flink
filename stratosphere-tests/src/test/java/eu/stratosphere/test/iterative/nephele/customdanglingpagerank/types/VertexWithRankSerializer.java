@@ -14,11 +14,11 @@ package eu.stratosphere.test.iterative.nephele.customdanglingpagerank.types;
 
 import java.io.IOException;
 
-import eu.stratosphere.api.common.typeutils.TypeSerializer;
+import eu.stratosphere.api.common.typeutils.TypeSerializerSingleton;
 import eu.stratosphere.core.memory.DataInputView;
 import eu.stratosphere.core.memory.DataOutputView;
 
-public final class VertexWithRankSerializer extends TypeSerializer<VertexWithRank> {
+public final class VertexWithRankSerializer extends TypeSerializerSingleton<VertexWithRank> {
 
 	private static final long serialVersionUID = 1L;
 	
@@ -36,6 +36,11 @@ public final class VertexWithRankSerializer extends TypeSerializer<VertexWithRan
 	@Override
 	public VertexWithRank createInstance() {
 		return new VertexWithRank();
+	}
+	
+	@Override
+	public VertexWithRank copy(VertexWithRank from) {
+		return new VertexWithRank(from.getVertexID(), from.getRank());
 	}
 
 	@Override
@@ -57,6 +62,11 @@ public final class VertexWithRankSerializer extends TypeSerializer<VertexWithRan
 	}
 
 	@Override
+	public VertexWithRank deserialize(DataInputView source) throws IOException {
+		return new VertexWithRank(source.readLong(), source.readDouble());
+	}
+	
+	@Override
 	public VertexWithRank deserialize(VertexWithRank target, DataInputView source) throws IOException {
 		target.setVertexID(source.readLong());
 		target.setRank(source.readDouble());
@@ -66,17 +76,5 @@ public final class VertexWithRankSerializer extends TypeSerializer<VertexWithRan
 	@Override
 	public void copy(DataInputView source, DataOutputView target) throws IOException {
 		target.write(source, 16);
-	}
-	
-	// --------------------------------------------------------------------------------------------
-	
-	@Override
-	public int hashCode() {
-		return 1;
-	}
-	
-	@Override
-	public boolean equals(Object obj) {
-		return obj != null && obj.getClass() == VertexWithRankSerializer.class;
 	}
 }

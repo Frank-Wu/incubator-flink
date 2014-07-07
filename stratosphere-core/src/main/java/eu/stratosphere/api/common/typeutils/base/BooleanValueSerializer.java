@@ -16,13 +16,13 @@ package eu.stratosphere.api.common.typeutils.base;
 
 import java.io.IOException;
 
-import eu.stratosphere.api.common.typeutils.TypeSerializer;
+import eu.stratosphere.api.common.typeutils.TypeSerializerSingleton;
 import eu.stratosphere.core.memory.DataInputView;
 import eu.stratosphere.core.memory.DataOutputView;
 import eu.stratosphere.types.BooleanValue;
 
 
-public class BooleanValueSerializer extends TypeSerializer<BooleanValue> {
+public final class BooleanValueSerializer extends TypeSerializerSingleton<BooleanValue> {
 
 	private static final long serialVersionUID = 1L;
 	
@@ -45,6 +45,13 @@ public class BooleanValueSerializer extends TypeSerializer<BooleanValue> {
 	}
 
 	@Override
+	public BooleanValue copy(BooleanValue from) {
+		BooleanValue result = new BooleanValue();
+		result.setValue(from.getValue());
+		return result;
+	}
+	
+	@Override
 	public BooleanValue copy(BooleanValue from, BooleanValue reuse) {
 		reuse.setValue(from.getValue());
 		return reuse;
@@ -60,6 +67,11 @@ public class BooleanValueSerializer extends TypeSerializer<BooleanValue> {
 		record.write(target);
 	}
 
+	@Override
+	public BooleanValue deserialize(DataInputView source) throws IOException {
+		return deserialize(new BooleanValue(), source);
+	}
+	
 	@Override
 	public BooleanValue deserialize(BooleanValue reuse, DataInputView source) throws IOException {
 		reuse.read(source);

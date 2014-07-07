@@ -16,14 +16,14 @@ package eu.stratosphere.api.common.typeutils.base.array;
 
 import java.io.IOException;
 
-import eu.stratosphere.api.common.typeutils.TypeSerializer;
+import eu.stratosphere.api.common.typeutils.TypeSerializerSingleton;
 import eu.stratosphere.core.memory.DataInputView;
 import eu.stratosphere.core.memory.DataOutputView;
 
 /**
  * A serializer for long arrays.
  */
-public class BooleanPrimitiveArraySerializer extends TypeSerializer<boolean[]>{
+public final class BooleanPrimitiveArraySerializer extends TypeSerializerSingleton<boolean[]>{
 
 	private static final long serialVersionUID = 1L;
 	
@@ -46,12 +46,17 @@ public class BooleanPrimitiveArraySerializer extends TypeSerializer<boolean[]>{
 	public boolean[] createInstance() {
 		return EMPTY;
 	}
-
+	
 	@Override
-	public boolean[] copy(boolean[] from, boolean[] reuse) {
+	public boolean[] copy(boolean[] from) {
 		boolean[] copy = new boolean[from.length];
 		System.arraycopy(from, 0, copy, 0, from.length);
 		return copy;
+	}
+
+	@Override
+	public boolean[] copy(boolean[] from, boolean[] reuse) {
+		return copy(from);
 	}
 
 	@Override
@@ -73,17 +78,21 @@ public class BooleanPrimitiveArraySerializer extends TypeSerializer<boolean[]>{
 		}
 	}
 
-
 	@Override
-	public boolean[] deserialize(boolean[] reuse, DataInputView source) throws IOException {
+	public boolean[] deserialize(DataInputView source) throws IOException {
 		final int len = source.readInt();
-		reuse = new boolean[len];
+		boolean[] result = new boolean[len];
 		
 		for (int i = 0; i < len; i++) {
-			reuse[i] = source.readBoolean();
+			result[i] = source.readBoolean();
 		}
 		
-		return reuse;
+		return result;
+	}
+	
+	@Override
+	public boolean[] deserialize(boolean[] reuse, DataInputView source) throws IOException {
+		return deserialize(source);
 	}
 
 	@Override
