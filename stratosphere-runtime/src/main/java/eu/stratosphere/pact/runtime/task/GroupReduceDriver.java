@@ -46,6 +46,8 @@ public class GroupReduceDriver<IT, OT> implements PactDriver<GenericGroupReduce<
 
 	private TypeComparator<IT> comparator;
 	
+	private boolean mutableObjectMode = false;
+	
 	private volatile boolean running;
 
 	// ------------------------------------------------------------------------

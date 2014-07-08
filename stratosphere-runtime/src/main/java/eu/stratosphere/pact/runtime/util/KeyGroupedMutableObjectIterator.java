@@ -43,8 +43,8 @@ public final class KeyGroupedMutableObjectIterator<E>
 	 * sorted by the key fields.
 	 * 
 	 * @param iterator An iterator over records, which are sorted by the key fields, in any order.
-	 * @param keyPositions The positions of the keys in the records.
-	 * @param keyClasses The types of the key fields.
+	 * @param serializer The serializer for the data type.
+	 * @param comparator The comparator parameterized to the type and keys
 	 */
 	public KeyGroupedMutableObjectIterator(MutableObjectIterator<E> iterator,
 			TypeSerializer<E> serializer, TypeComparator<E> comparator)
