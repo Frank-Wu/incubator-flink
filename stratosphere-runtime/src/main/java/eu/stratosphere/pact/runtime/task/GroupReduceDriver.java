@@ -21,6 +21,7 @@ import eu.stratosphere.api.common.typeutils.TypeComparator;
 import eu.stratosphere.api.common.typeutils.TypeSerializer;
 import eu.stratosphere.pact.runtime.task.util.TaskConfig;
 import eu.stratosphere.pact.runtime.util.KeyGroupedIterator;
+import eu.stratosphere.pact.runtime.util.KeyGroupedIteratorImmutable;
 import eu.stratosphere.util.Collector;
 import eu.stratosphere.util.MutableObjectIterator;
 
@@ -46,7 +47,7 @@ public class GroupReduceDriver<IT, OT> implements PactDriver<GenericGroupReduce<
 
 	private TypeComparator<IT> comparator;
 	
-	private boolean mutableObjectMode = false;
+	private boolean mutableObjectMode;
 	
 	private volatile boolean running;
 
@@ -86,6 +87,12 @@ public class GroupReduceDriver<IT, OT> implements PactDriver<GenericGroupReduce<
 		this.serializer = this.taskContext.<IT>getInputSerializer(0).getSerializer();
 		this.comparator = this.taskContext.getInputComparator(0);
 		this.input = this.taskContext.getInput(0);
+		
+		this.mutableObjectMode = config.getMutableObjectMode();
+		
+		if (LOG.isDebugEnabled()) {
+			LOG.debug("GroupReduceDriver uses " + (this.mutableObjectMode ? "MUTABLE" : "IMMUTABLE") + " object mode.");
+		}
 	}
 
 	@Override
@@ -94,15 +101,23 @@ public class GroupReduceDriver<IT, OT> implements PactDriver<GenericGroupReduce<
 			LOG.debug(this.taskContext.formatLogString("GroupReducer preprocessing done. Running GroupReducer code."));
 		}
 
-		final KeyGroupedIterator<IT> iter = new KeyGroupedIterator<IT>(this.input, this.serializer, this.comparator);
-
 		// cache references on the stack
 		final GenericGroupReduce<IT, OT> stub = this.taskContext.getStub();
 		final Collector<OT> output = this.taskContext.getOutputCollector();
-
-		// run stub implementation
-		while (this.running && iter.nextKey()) {
-			stub.reduce(iter.getValues(), output);
+		
+		if (mutableObjectMode) {
+			final KeyGroupedIterator<IT> iter = new KeyGroupedIterator<IT>(this.input, this.serializer, this.comparator);
+			// run stub implementation
+			while (this.running && iter.nextKey()) {
+				stub.reduce(iter.getValues(), output);
+			}
+		}
+		else {
+			final KeyGroupedIteratorImmutable<IT> iter = new KeyGroupedIteratorImmutable<IT>(this.input, this.serializer, this.comparator);
+			// run stub implementation
+			while (this.running && iter.nextKey()) {
+				stub.reduce(iter.getValues(), output);
+			}
 		}
 	}
 
