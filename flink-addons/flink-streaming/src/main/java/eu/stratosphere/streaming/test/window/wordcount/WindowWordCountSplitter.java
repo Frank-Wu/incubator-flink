@@ -13,23 +13,27 @@
  *
  **********************************************************************************************************************/
 
-package eu.stratosphere.streaming.test.wordcount;
+package eu.stratosphere.streaming.test.window.wordcount;
 
-import eu.stratosphere.streaming.api.invokable.UserSourceInvokable;
+import eu.stratosphere.streaming.api.invokable.UserTaskInvokable;
 import eu.stratosphere.types.Record;
 import eu.stratosphere.types.StringValue;
 
-public class WordCountSource extends UserSourceInvokable {
-	
-//	private final String motto = "Stratosphere Big Data looks tiny from here";
-	private final String motto = "Gyuszi Marci Gabor Frank Fabian Stephan";
-	private final Record mottoRecord = new Record(new StringValue(motto));
+public class WindowWordCountSplitter extends UserTaskInvokable {
 
+	private StringValue sentence = new StringValue("");
+	private String[] words = new String[0];
+	private StringValue wordValue = new StringValue("");
+	private Record outputRecord = new Record(wordValue);
+	
 	@Override
-	public void invoke() throws Exception {
-		for (int i = 0; i < 1000; i++) {
-			emit(mottoRecord);
+	public void invoke(Record record) throws Exception {
+		record.getFieldInto(0, sentence);
+		words = sentence.getValue().split(" ");
+		for (CharSequence word : words) {
+			wordValue.setValue(word);
+			outputRecord.setField(0, wordValue);
+			emit(outputRecord);
 		}
 	}
-
 }

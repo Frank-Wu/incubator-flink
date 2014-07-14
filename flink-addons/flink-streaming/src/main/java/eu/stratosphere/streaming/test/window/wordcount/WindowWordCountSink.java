@@ -13,23 +13,25 @@
  *
  **********************************************************************************************************************/
 
-package eu.stratosphere.streaming.test.wordcount;
+package eu.stratosphere.streaming.test.window.wordcount;
 
-import eu.stratosphere.streaming.api.invokable.UserSourceInvokable;
+import eu.stratosphere.streaming.api.invokable.UserSinkInvokable;
+import eu.stratosphere.types.IntValue;
 import eu.stratosphere.types.Record;
 import eu.stratosphere.types.StringValue;
 
-public class WordCountSource extends UserSourceInvokable {
-	
-//	private final String motto = "Stratosphere Big Data looks tiny from here";
-	private final String motto = "Gyuszi Marci Gabor Frank Fabian Stephan";
-	private final Record mottoRecord = new Record(new StringValue(motto));
+public class WindowWordCountSink implements UserSinkInvokable {
+
+	private StringValue word = new StringValue("");
+	private IntValue count = new IntValue(1);
 
 	@Override
-	public void invoke() throws Exception {
-		for (int i = 0; i < 1000; i++) {
-			emit(mottoRecord);
-		}
-	}
+	public void invoke(Record record) throws Exception {
 
+		record.getFieldInto(0, word);
+		record.getFieldInto(1, count);
+
+		System.out.println(word.getValue() + " " + count.getValue());
+
+	}
 }

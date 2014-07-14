@@ -13,35 +13,34 @@
  *
  **********************************************************************************************************************/
 
-package eu.stratosphere.streaming.api;
+package eu.stratosphere.streaming.api.streamcomponent;
 
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
 
 import eu.stratosphere.configuration.Configuration;
 import eu.stratosphere.nephele.io.ChannelSelector;
 import eu.stratosphere.nephele.io.RecordReader;
 import eu.stratosphere.nephele.io.RecordWriter;
 import eu.stratosphere.nephele.template.AbstractTask;
-import eu.stratosphere.streaming.api.invokable.DefaultTaskInvokable;
+import eu.stratosphere.streaming.api.AckEvent;
+import eu.stratosphere.streaming.api.FailEvent;
+import eu.stratosphere.streaming.api.FaultTolerancyBuffer;
+import eu.stratosphere.streaming.api.StreamRecord;
 import eu.stratosphere.streaming.api.invokable.UserTaskInvokable;
 import eu.stratosphere.types.Record;
 
-//TODO: Refactor, create common ancestor with StreamSource
 public class StreamTask extends AbstractTask {
 
 	private List<RecordReader<Record>> inputs;
 	private List<RecordWriter<Record>> outputs;
 	private List<ChannelSelector<Record>> partitioners;
 	private UserTaskInvokable userFunction;
-	private int numberOfInputs;
-	private int numberOfOutputs;
-
 	private static int numTasks = 0;
 	private String taskInstanceID = "";
-	private Map<String, StreamRecord> recordBuffer;
+	StreamComponentHelper<StreamTask> streamTaskHelper;
+
+	private FaultTolerancyBuffer recordBuffer;
 
 	public StreamTask() {
 		// TODO: Make configuration file visible and call setClassInputs() here
@@ -49,37 +48,28 @@ public class StreamTask extends AbstractTask {
 		outputs = new LinkedList<RecordWriter<Record>>();
 		partitioners = new LinkedList<ChannelSelector<Record>>();
 		userFunction = null;
-		numberOfInputs = 0;
-		numberOfOutputs = 0;
 		numTasks++;
 		taskInstanceID = Integer.toString(numTasks);
-		recordBuffer = new TreeMap<String, StreamRecord>();
-	}
-
-	public void setUserFunction(Configuration taskConfiguration) {
-		Class<? extends UserTaskInvokable> userFunctionClass = taskConfiguration
-				.getClass("userfunction", DefaultTaskInvokable.class,
-						UserTaskInvokable.class);
-		try {
-			userFunction = userFunctionClass.newInstance();
-			userFunction.declareOutputs(outputs, taskInstanceID, recordBuffer);
-		} catch (Exception e) {
-
-		}
+		streamTaskHelper = new StreamComponentHelper<StreamTask>();
 	}
 
 	@Override
 	public void registerInputOutput() {
 		Configuration taskConfiguration = getTaskConfiguration();
 
-		numberOfInputs = StreamComponentFactory.setConfigInputs(this,
-				taskConfiguration, inputs);
-		numberOfOutputs = StreamComponentFactory.setConfigOutputs(this,
-				taskConfiguration, outputs, partitioners);
+		try {
+			streamTaskHelper.setConfigInputs(this, taskConfiguration, inputs);
+			streamTaskHelper.setConfigOutputs(this, taskConfiguration, outputs,
+					partitioners);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 
-		setUserFunction(taskConfiguration);
-		StreamComponentFactory.setAckListener(recordBuffer, taskInstanceID,
-				outputs);
+		recordBuffer = new FaultTolerancyBuffer(outputs, taskInstanceID);
+		userFunction = (UserTaskInvokable) streamTaskHelper.getUserFunction(
+				taskConfiguration, outputs, taskInstanceID, recordBuffer);
+		streamTaskHelper.setAckListener(recordBuffer, taskInstanceID, outputs);
+		streamTaskHelper.setFailListener(recordBuffer, taskInstanceID, outputs);
 	}
 
 	@Override
@@ -91,15 +81,14 @@ public class StreamTask extends AbstractTask {
 				if (input.hasNext()) {
 					hasInput = true;
 					StreamRecord streamRecord = new StreamRecord(input.next());
-					String id = streamRecord.popId();
-					// TODO: Enclose invoke in try-catch to properly fail
-					// records
-					userFunction.invoke(streamRecord.getRecord());
-					System.out.println(this.getClass().getName() + "-"
-							+ taskInstanceID);
-					System.out.println(recordBuffer.toString());
-					System.out.println("---------------------");
-					input.publishEvent(new AckEvent(id));
+					String id = streamRecord.getId();
+					// TODO create method for concurrent publishing
+					try {
+						userFunction.invoke(streamRecord.getRecord());
+						streamTaskHelper.threadSafePublish(new AckEvent(id), input);
+					} catch (Exception e) {
+						streamTaskHelper.threadSafePublish(new FailEvent(id), input);
+					}
 				}
 			}
 		}
