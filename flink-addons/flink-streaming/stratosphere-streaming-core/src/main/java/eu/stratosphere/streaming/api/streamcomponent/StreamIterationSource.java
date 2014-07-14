@@ -36,8 +36,7 @@ public class StreamIterationSource extends AbstractStreamComponent {
 	private List<ChannelSelector<StreamRecord>> partitioners;
 	private static int numSources;
 	private int[] numberOfOutputChannels;
-	private String iterationId;
-	private BlockingQueue<StreamRecord> dataChannel;
+	BlockingQueue<StreamRecord> dataChannel;
 
 	public StreamIterationSource() {
 
@@ -65,9 +64,8 @@ public class StreamIterationSource extends AbstractStreamComponent {
 		for (int i = 0; i < numberOfOutputChannels.length; i++) {
 			numberOfOutputChannels[i] = configuration.getInteger("channels_" + i, 0);
 		}
-		
-		iterationId = configuration.getString("iteration-id", "iteration-0");
-		BlockingQueueBroker.instance().handIn(iterationId, dataChannel);
+
+		BlockingQueueBroker.instance().handIn("dc", dataChannel);
 
 	}
 

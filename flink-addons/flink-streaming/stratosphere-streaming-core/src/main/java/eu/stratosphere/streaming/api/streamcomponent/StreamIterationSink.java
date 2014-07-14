@@ -20,7 +20,11 @@ import java.util.concurrent.BlockingQueue;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import eu.stratosphere.api.java.tuple.Tuple;
 import eu.stratosphere.runtime.io.api.AbstractRecordReader;
+import eu.stratosphere.streaming.api.invokable.DefaultSinkInvokable;
+import eu.stratosphere.streaming.api.invokable.StreamRecordInvokable;
+import eu.stratosphere.streaming.api.invokable.UserSinkInvokable;
 import eu.stratosphere.streaming.api.streamrecord.StreamRecord;
 
 public class StreamIterationSink extends AbstractStreamComponent {
@@ -28,9 +32,7 @@ public class StreamIterationSink extends AbstractStreamComponent {
 	private static final Log log = LogFactory.getLog(StreamIterationSink.class);
 
 	private AbstractRecordReader inputs;
-	private String iterationId;
-	private BlockingQueue<StreamRecord> dataChannel;
-	
+	BlockingQueue<StreamRecord> dataChannel;
 
 	public StreamIterationSink() {
 	}
@@ -43,8 +45,7 @@ public class StreamIterationSink extends AbstractStreamComponent {
 			setSerializers();
 			setSinkSerializer();
 			inputs = getConfigInputs();
-			iterationId = configuration.getString("iteration-id", "iteration-0");
-			dataChannel = BlockingQueueBroker.instance().getAndRemove(iterationId);
+			dataChannel = BlockingQueueBroker.instance().getAndRemove("dc");
 		} catch (Exception e) {
 			if (log.isErrorEnabled()) {
 				log.error("Cannot register inputs", e);

@@ -47,10 +47,12 @@ import eu.stratosphere.types.TypeInformation;
  */
 public class DataStream<T extends Tuple> {
 
-	protected static Integer counter = 0;
-	protected final StreamExecutionEnvironment environment;
-	protected TypeInformation<T> type;
-	protected String id;
+	private static Integer counter = 0;
+	private final StreamExecutionEnvironment environment;
+	private TypeInformation<T> type;
+	private String id;
+	private String userDefinedName;
+	private OutputSelector<T> outputSelector;
 	int dop;
 	List<String> connectIDs;
 	List<ConnectionType> ctypes;
@@ -87,10 +89,9 @@ public class DataStream<T extends Tuple> {
 	 * @param id
 	 *            The id of the DataStream
 	 */
-	protected DataStream(StreamExecutionEnvironment environment, String operatorType, String id) {
+	private DataStream(StreamExecutionEnvironment environment, String operatorType, String id) {
 		this.environment = environment;
 		this.id = id;
-		initConnections();
 	}
 
 	/**
@@ -126,7 +127,7 @@ public class DataStream<T extends Tuple> {
 		copiedStream.dop = this.dop;
 		return copiedStream;
 	}
-	
+
 	/**
 	 * Returns the ID of the {@link DataStream}.
 	 * 
@@ -188,6 +189,25 @@ public class DataStream<T extends Tuple> {
 	}
 
 	/**
+	 * Gives the data transformation a user defined name in order to use at
+	 * directed outputs
+	 * 
+	 * @param name
+	 *            The name to set
+	 * @return The named DataStream.
+	 */
+	public DataStream<T> name(String name) {
+		// copy?
+		if (name == "") {
+			throw new IllegalArgumentException("User defined name must not be empty string");
+		}
+		
+		userDefinedName = name;
+		environment.setName(this, name);
+		return this;
+	}
+
+	/**
 	 * Connecting {@link DataStream} outputs with each other for applying joint
 	 * operators on them. The DataStreams connected using this operator will be
 	 * transformed simultaneously. It creates a joint output of the connected
@@ -215,6 +235,13 @@ public class DataStream<T extends Tuple> {
 		return returnStream;
 	}
 
+	
+	public DataStream<T> directTo(OutputSelector<T> outputSelector) {
+		this.outputSelector = outputSelector;
+		environment.addDirectedEmit(id, outputSelector);
+		return this;
+	}
+	
 	/**
 	 * Sets the partitioning of the {@link DataStream} so that the output tuples
 	 * are partitioned by their hashcode and are sent to only one component.
@@ -356,8 +383,8 @@ public class DataStream<T extends Tuple> {
 	}
 
 	public IterativeDataStream<T> iterate() {
-		addIterationSource();
-		return new IterativeDataStream<T>(this);
+		environment.iterate();
+		return new IterativeDataStream<T>(environment);
 	}
 
 	/**
