@@ -38,7 +38,6 @@ public class StreamTask extends AbstractTask {
 	private UserTaskInvokable userFunction;
 	private static int numTasks = 0;
 	private String taskInstanceID = "";
-	StreamComponentHelper<StreamTask> streamTaskHelper;
 
 	private FaultTolerancyBuffer recordBuffer;
 
@@ -50,26 +49,24 @@ public class StreamTask extends AbstractTask {
 		userFunction = null;
 		numTasks++;
 		taskInstanceID = Integer.toString(numTasks);
-		streamTaskHelper = new StreamComponentHelper<StreamTask>();
+
 	}
 
 	@Override
 	public void registerInputOutput() {
 		Configuration taskConfiguration = getTaskConfiguration();
 
-		try {
-			streamTaskHelper.setConfigInputs(this, taskConfiguration, inputs);
-			streamTaskHelper.setConfigOutputs(this, taskConfiguration, outputs,
-					partitioners);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+		StreamComponentFactory.setConfigInputs(this, taskConfiguration, inputs);
+		StreamComponentFactory.setConfigOutputs(this, taskConfiguration, outputs,
+				partitioners);
 
 		recordBuffer = new FaultTolerancyBuffer(outputs, taskInstanceID);
-		userFunction = (UserTaskInvokable) streamTaskHelper.getUserFunction(
+		userFunction = (UserTaskInvokable) StreamComponentFactory.setUserFunction(
 				taskConfiguration, outputs, taskInstanceID, recordBuffer);
-		streamTaskHelper.setAckListener(recordBuffer, taskInstanceID, outputs);
-		streamTaskHelper.setFailListener(recordBuffer, taskInstanceID, outputs);
+		StreamComponentFactory
+				.setAckListener(recordBuffer, taskInstanceID, outputs);
+		StreamComponentFactory.setFailListener(recordBuffer, taskInstanceID,
+				outputs);
 	}
 
 	@Override
@@ -82,13 +79,19 @@ public class StreamTask extends AbstractTask {
 					hasInput = true;
 					StreamRecord streamRecord = new StreamRecord(input.next());
 					String id = streamRecord.getId();
-					// TODO create method for concurrent publishing
+					// TODO: Enclose invoke in try-catch to properly fail
+					// records
 					try {
 						userFunction.invoke(streamRecord.getRecord());
-						streamTaskHelper.threadSafePublish(new AckEvent(id), input);
+						System.out
+								.println(this.getClass().getName() + "-" + taskInstanceID);
+						System.out.println(recordBuffer.getRecordBuffer());
+						System.out.println("---------------------");
+						input.publishEvent(new AckEvent(id));
 					} catch (Exception e) {
-						streamTaskHelper.threadSafePublish(new FailEvent(id), input);
+						input.publishEvent(new FailEvent(id));
 					}
+
 				}
 			}
 		}

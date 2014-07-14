@@ -13,27 +13,29 @@
  *
  **********************************************************************************************************************/
 
-package eu.stratosphere.streaming.test.wordcount;
+package eu.stratosphere.streaming.test.window.wordcount;
 
-import eu.stratosphere.streaming.api.invokable.UserTaskInvokable;
-import eu.stratosphere.types.Record;
+import eu.stratosphere.nephele.jobgraph.JobGraph;
+import eu.stratosphere.streaming.api.JobGraphBuilder;
+
+import eu.stratosphere.test.util.TestBase2;
 import eu.stratosphere.types.StringValue;
 
-public class WordCountSplitter extends UserTaskInvokable {
+public class WindowWordCount extends TestBase2 {
 
-	private StringValue sentence = new StringValue("");
-	private String[] words = new String[0];
-	private StringValue wordValue = new StringValue("");
-	private Record outputRecord = new Record(wordValue);
-	
 	@Override
-	public void invoke(Record record) throws Exception {
-		record.getFieldInto(0, sentence);
-		words = sentence.getValue().split(" ");
-		for (CharSequence word : words) {
-			wordValue.setValue(word);
-			outputRecord.setField(0, wordValue);
-			emit(outputRecord);
-		}
+	public JobGraph getJobGraph() {
+		JobGraphBuilder graphBuilder = new JobGraphBuilder("testGraph");
+		graphBuilder.setSource("WordCountSource", WindowWordCountSource.class);
+		graphBuilder.setTask("WordCountSplitter", WindowWordCountSplitter.class, 1);
+		graphBuilder.setTask("WordCountCounter", WindowWordCountCounter.class, 1);
+		graphBuilder.setSink("WordCountSink", WindowWordCountSink.class);
+
+		graphBuilder.broadcastConnect("WordCountSource", "WordCountSplitter");
+		graphBuilder.fieldsConnect("WordCountSplitter", "WordCountCounter", 0,
+				StringValue.class);
+		graphBuilder.broadcastConnect("WordCountCounter", "WordCountSink");
+
+		return graphBuilder.getJobGraph();
 	}
 }

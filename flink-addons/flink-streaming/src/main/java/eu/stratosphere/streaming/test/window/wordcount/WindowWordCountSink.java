@@ -13,27 +13,25 @@
  *
  **********************************************************************************************************************/
 
-package eu.stratosphere.streaming.test.wordcount;
+package eu.stratosphere.streaming.test.window.wordcount;
 
-import eu.stratosphere.streaming.api.invokable.UserTaskInvokable;
+import eu.stratosphere.streaming.api.invokable.UserSinkInvokable;
+import eu.stratosphere.types.IntValue;
 import eu.stratosphere.types.Record;
 import eu.stratosphere.types.StringValue;
 
-public class WordCountSplitter extends UserTaskInvokable {
+public class WindowWordCountSink implements UserSinkInvokable {
 
-	private StringValue sentence = new StringValue("");
-	private String[] words = new String[0];
-	private StringValue wordValue = new StringValue("");
-	private Record outputRecord = new Record(wordValue);
-	
+	private StringValue word = new StringValue("");
+	private IntValue count = new IntValue(1);
+
 	@Override
 	public void invoke(Record record) throws Exception {
-		record.getFieldInto(0, sentence);
-		words = sentence.getValue().split(" ");
-		for (CharSequence word : words) {
-			wordValue.setValue(word);
-			outputRecord.setField(0, wordValue);
-			emit(outputRecord);
-		}
+
+		record.getFieldInto(0, word);
+		record.getFieldInto(1, count);
+
+		System.out.println(word.getValue() + " " + count.getValue());
+
 	}
 }

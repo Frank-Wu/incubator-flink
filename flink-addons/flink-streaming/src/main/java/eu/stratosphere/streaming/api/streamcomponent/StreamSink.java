@@ -22,7 +22,6 @@ import eu.stratosphere.configuration.Configuration;
 import eu.stratosphere.nephele.io.RecordReader;
 import eu.stratosphere.nephele.template.AbstractOutputTask;
 import eu.stratosphere.streaming.api.AckEvent;
-import eu.stratosphere.streaming.api.FailEvent;
 import eu.stratosphere.streaming.api.StreamRecord;
 import eu.stratosphere.streaming.api.invokable.UserSinkInvokable;
 import eu.stratosphere.types.Record;
@@ -31,25 +30,18 @@ public class StreamSink extends AbstractOutputTask {
 
 	private List<RecordReader<Record>> inputs;
 	private UserSinkInvokable userFunction;
-	private StreamComponentHelper<StreamSink> streamSinkHelper;
 
 	public StreamSink() {
 		// TODO: Make configuration file visible and call setClassInputs() here
 		inputs = new LinkedList<RecordReader<Record>>();
 		userFunction = null;
-		streamSinkHelper = new StreamComponentHelper<StreamSink>();
 	}
 
 	@Override
 	public void registerInputOutput() {
 		Configuration taskConfiguration = getTaskConfiguration();
-		
-		try {
-			streamSinkHelper.setConfigInputs(this, taskConfiguration, inputs);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		userFunction = streamSinkHelper.getUserFunction(taskConfiguration);
+		StreamComponentFactory.setConfigInputs(this, taskConfiguration, inputs);
+		userFunction = StreamComponentFactory.setUserFunction(taskConfiguration);
 	}
 
 	@Override
@@ -62,16 +54,11 @@ public class StreamSink extends AbstractOutputTask {
 					hasInput = true;
 					StreamRecord rec = new StreamRecord(input.next());
 					String id = rec.getId();
-					try {
-						userFunction.invoke(rec.getRecord());
-						streamSinkHelper.threadSafePublish(new AckEvent(id), input);
-					} catch (Exception e) {
-						streamSinkHelper.threadSafePublish(new FailEvent(id), input);
-
-					}
+					userFunction.invoke(rec.getRecord());
+					input.publishEvent(new AckEvent(id));
 				}
-
 			}
 		}
 	}
+
 }

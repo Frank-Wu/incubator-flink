@@ -13,13 +13,13 @@
  *
  **********************************************************************************************************************/
 
-package eu.stratosphere.streaming.test.wordcount;
+package eu.stratosphere.streaming.test.window.wordcount;
 
 import eu.stratosphere.streaming.api.invokable.UserTaskInvokable;
 import eu.stratosphere.types.Record;
 import eu.stratosphere.types.StringValue;
 
-public class WordCountSplitter extends UserTaskInvokable {
+public class WindowWordCountSplitter extends UserTaskInvokable {
 
 	private StringValue sentence = new StringValue("");
 	private String[] words = new String[0];

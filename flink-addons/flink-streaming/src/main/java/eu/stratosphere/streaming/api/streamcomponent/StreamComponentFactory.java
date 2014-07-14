@@ -1,15 +1,12 @@
 package eu.stratosphere.streaming.api.streamcomponent;
 
 import java.util.List;
-import java.util.Random;
 
 import eu.stratosphere.configuration.Configuration;
-import eu.stratosphere.nephele.event.task.AbstractTaskEvent;
 import eu.stratosphere.nephele.event.task.EventListener;
 import eu.stratosphere.nephele.io.ChannelSelector;
 import eu.stratosphere.nephele.io.RecordReader;
 import eu.stratosphere.nephele.io.RecordWriter;
-import eu.stratosphere.nephele.template.AbstractInvokable;
 import eu.stratosphere.streaming.api.AckEvent;
 import eu.stratosphere.streaming.api.AckEventListener;
 import eu.stratosphere.streaming.api.FailEvent;
@@ -25,10 +22,9 @@ import eu.stratosphere.types.Key;
 import eu.stratosphere.types.Record;
 import eu.stratosphere.types.StringValue;
 
-public final class StreamComponentHelper<T extends AbstractInvokable> {
-	private Random random = new Random();
-	
-	public void setAckListener(FaultTolerancyBuffer recordBuffer,
+public final class StreamComponentFactory {
+
+	public static void setAckListener(FaultTolerancyBuffer recordBuffer,
 			String sourceInstanceID, List<RecordWriter<Record>> outputs) {
 		EventListener eventListener = new AckEventListener(sourceInstanceID,
 				recordBuffer);
@@ -37,8 +33,8 @@ public final class StreamComponentHelper<T extends AbstractInvokable> {
 			output.subscribeToEvent(eventListener, AckEvent.class);
 		}
 	}
-
-	public void setFailListener(FaultTolerancyBuffer recordBuffer,
+	
+	public static void setFailListener(FaultTolerancyBuffer recordBuffer,
 			String sourceInstanceID, List<RecordWriter<Record>> outputs) {
 		EventListener eventListener = new FailEventListener(sourceInstanceID,
 				recordBuffer);
@@ -48,52 +44,73 @@ public final class StreamComponentHelper<T extends AbstractInvokable> {
 		}
 	}
 
-	public void setConfigInputs(T taskBase, Configuration taskConfiguration,
-			List<RecordReader<Record>> inputs) throws Exception {
+	// for StreamTask
+	public static int setConfigInputs(StreamTask taskBase,
+			Configuration taskConfiguration, List<RecordReader<Record>> inputs) {
 		int numberOfInputs = taskConfiguration.getInteger("numberOfInputs", 0);
 		for (int i = 0; i < numberOfInputs; i++) {
-			if (taskBase instanceof StreamTask) {
-				inputs.add(new RecordReader<Record>((StreamTask) taskBase,
-						Record.class));
-			} else if (taskBase instanceof StreamSink) {
-				inputs.add(new RecordReader<Record>((StreamSink) taskBase,
-						Record.class));
-			} else {
-				throw new Exception(
-						"Nonsupported object passed to setConfigInputs");
-			}
+			inputs.add(new RecordReader<Record>(taskBase, Record.class));
 		}
+		return numberOfInputs;
 	}
 
-	public void setConfigOutputs(T taskBase, Configuration taskConfiguration,
+	// this function can be removed as duplication of the above function if
+	// modification on kernel is allowed.
+	// for StreamSink
+	public static int setConfigInputs(StreamSink taskBase,
+			Configuration taskConfiguration, List<RecordReader<Record>> inputs) {
+		int numberOfInputs = taskConfiguration.getInteger("numberOfInputs", 0);
+		for (int i = 0; i < numberOfInputs; i++) {
+			inputs.add(new RecordReader<Record>(taskBase, Record.class));
+		}
+		return numberOfInputs;
+	}
+
+	// for StreamTask
+	public static int setConfigOutputs(StreamTask taskBase,
+			Configuration taskConfiguration,
 			List<RecordWriter<Record>> outputs,
-			List<ChannelSelector<Record>> partitioners) throws Exception {
+			List<ChannelSelector<Record>> partitioners) {
 		int numberOfOutputs = taskConfiguration
 				.getInteger("numberOfOutputs", 0);
 		for (int i = 1; i <= numberOfOutputs; i++) {
-			setPartitioner(taskConfiguration, i, partitioners);
+			StreamComponentFactory.setPartitioner(taskConfiguration, i,
+					partitioners);
 		}
 		for (ChannelSelector<Record> outputPartitioner : partitioners) {
-			if (taskBase instanceof StreamTask) {
-				outputs.add(new RecordWriter<Record>((StreamTask) taskBase,
-						Record.class, outputPartitioner));
-			} else if (taskBase instanceof StreamSource) {
-				outputs.add(new RecordWriter<Record>((StreamSource) taskBase,
-						Record.class, outputPartitioner));
-			} else {
-				throw new Exception(
-						"Nonsupported object passed to setConfigOutputs");
-			}
+			outputs.add(new RecordWriter<Record>(taskBase, Record.class,
+					outputPartitioner));
 		}
+		return numberOfOutputs;
 	}
 
-	public UserSinkInvokable getUserFunction(Configuration taskConfiguration) {
+	// this function can be removed as duplication of the above function if
+	// modification on kernel is allowed.
+	// for StreamSource
+	public static int setConfigOutputs(StreamSource taskBase,
+			Configuration taskConfiguration,
+			List<RecordWriter<Record>> outputs,
+			List<ChannelSelector<Record>> partitioners) {
+		int numberOfOutputs = taskConfiguration
+				.getInteger("numberOfOutputs", 0);
+		for (int i = 1; i <= numberOfOutputs; i++) {
+			StreamComponentFactory.setPartitioner(taskConfiguration, i,
+					partitioners);
+		}
+		for (ChannelSelector<Record> outputPartitioner : partitioners) {
+			outputs.add(new RecordWriter<Record>(taskBase, Record.class,
+					outputPartitioner));
+		}
+		return numberOfOutputs;
+	}
 
+	public static UserSinkInvokable setUserFunction(Configuration taskConfiguration) {
+		
 		Class<? extends UserSinkInvokable> userFunctionClass = taskConfiguration
 				.getClass("userfunction", DefaultSinkInvokable.class,
 						UserSinkInvokable.class);
 		UserSinkInvokable userFunction = null;
-
+		
 		try {
 			userFunction = userFunctionClass.newInstance();
 		} catch (Exception e) {
@@ -101,12 +118,13 @@ public final class StreamComponentHelper<T extends AbstractInvokable> {
 		}
 		return userFunction;
 	}
-
-	public StreamInvokable getUserFunction(Configuration taskConfiguration,
+	
+	public static StreamInvokable setUserFunction(
+			Configuration taskConfiguration,
 			List<RecordWriter<Record>> outputs, String instanceID,
 			FaultTolerancyBuffer recordBuffer) {
 
-		// Default value is a TaskInvokable even if it was called from a source
+		//Default value is a TaskInvokable even if it was called from a source
 		Class<? extends StreamInvokable> userFunctionClass = taskConfiguration
 				.getClass("userfunction", DefaultTaskInvokable.class,
 						StreamInvokable.class);
@@ -121,21 +139,8 @@ public final class StreamComponentHelper<T extends AbstractInvokable> {
 		return userFunction;
 	}
 
-	//TODO: use TCP-like waiting
-	public void threadSafePublish (AbstractTaskEvent e, RecordReader<Record> input) throws InterruptedException {
-		boolean concurrentModificationOccured = false;
-		while (!concurrentModificationOccured) {
-			try {
-				input.publishEvent(e);
-				concurrentModificationOccured = true;
-			} catch (Exception exeption) {
-				Thread.sleep(random.nextInt(50));
-			}
-		}
-	}
-	
-	private void setPartitioner(Configuration taskConfiguration, int nrOutput,
-			List<ChannelSelector<Record>> partitioners) {
+	public static void setPartitioner(Configuration taskConfiguration,
+			int nrOutput, List<ChannelSelector<Record>> partitioners) {
 		Class<? extends ChannelSelector<Record>> partitioner = taskConfiguration
 				.getClass("partitionerClass_" + nrOutput,
 						DefaultPartitioner.class, ChannelSelector.class);
@@ -160,5 +165,4 @@ public final class StreamComponentHelper<T extends AbstractInvokable> {
 			System.out.println(e);
 		}
 	}
-
 }
