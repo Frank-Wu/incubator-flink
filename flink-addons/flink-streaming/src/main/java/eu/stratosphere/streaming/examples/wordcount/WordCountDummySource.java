@@ -15,13 +15,14 @@
 
 package eu.stratosphere.streaming.examples.wordcount;
 
-import eu.stratosphere.api.java.tuple.Tuple1;
 import eu.stratosphere.streaming.api.invokable.UserSourceInvokable;
 import eu.stratosphere.streaming.api.streamrecord.StreamRecord;
+import eu.stratosphere.types.StringValue;
 
 public class WordCountDummySource extends UserSourceInvokable {
 
-	StreamRecord record = new StreamRecord(new Tuple1<String>());
+	private StringValue lineValue = new StringValue("");
+	StreamRecord record = new StreamRecord(lineValue);
 
 	public WordCountDummySource() {
 	}
@@ -30,10 +31,11 @@ public class WordCountDummySource extends UserSourceInvokable {
 	public void invoke() throws Exception {
 		for (int i = 0; i < 100; i++) {
 			if (i % 2 == 0) {
-				record.setString(0, "Gyula Marci");
+				lineValue.setValue("Gyula Marci");
 			} else {
-				record.setString(0, "Gabor Gyula");
+				lineValue.setValue("Gabor Gyula");
 			}
+			record.setRecord(lineValue);
 			emit(record);
 		}
 	}
