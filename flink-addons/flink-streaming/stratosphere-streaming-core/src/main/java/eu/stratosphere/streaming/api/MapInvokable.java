@@ -12,31 +12,30 @@
  * specific language governing permissions and limitations under the License.
  *
  **********************************************************************************************************************/
-package eu.stratosphere.streaming.api.invokable;
 
-import eu.stratosphere.api.java.functions.FilterFunction;
+package eu.stratosphere.streaming.api;
+
+import eu.stratosphere.api.java.functions.MapFunction;
 import eu.stratosphere.api.java.tuple.Tuple;
+import eu.stratosphere.streaming.api.invokable.UserTaskInvokable;
 import eu.stratosphere.streaming.api.streamrecord.StreamRecord;
 import eu.stratosphere.util.Collector;
 
-public class FilterInvokable<IN extends Tuple> extends UserTaskInvokable<IN, IN> {
-
+public class MapInvokable<T extends Tuple, R extends Tuple> extends UserTaskInvokable<T, R> {
 	private static final long serialVersionUID = 1L;
 
-	FilterFunction<IN> filterFunction;
-
-	public FilterInvokable(FilterFunction<IN> filterFunction) {
-		this.filterFunction = filterFunction;
+	private MapFunction<T, R> mapper;
+	public MapInvokable(MapFunction<T, R> mapper) {
+		this.mapper = mapper;
 	}
-
+	
 	@Override
-	public void invoke(StreamRecord record, Collector<IN> collector) throws Exception {
-		for (int i = 0; i < record.getBatchSize(); i++) {
+	public void invoke(StreamRecord record, Collector<R> collector) throws Exception {
+		int batchSize = record.getBatchSize();
+		for (int i = 0; i < batchSize; i++) {
 			@SuppressWarnings("unchecked")
-			IN tuple = (IN) record.getTuple(i);
-			if (filterFunction.filter(tuple)) {
-				collector.collect(tuple);
-			}
+			T tuple = (T) record.getTuple(i);
+			collector.collect(mapper.map(tuple));
 		}
-	}
+	}		
 }

@@ -13,7 +13,7 @@
  *
  **********************************************************************************************************************/
 
-package eu.stratosphere.streaming.api.streamrecord;
+package eu.stratosphere.streaming.api;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,6 +21,7 @@ import java.util.List;
 import eu.stratosphere.api.java.tuple.Tuple;
 import eu.stratosphere.pact.runtime.plugable.SerializationDelegate;
 import eu.stratosphere.runtime.io.api.RecordWriter;
+import eu.stratosphere.streaming.api.streamrecord.StreamRecord;
 import eu.stratosphere.util.Collector;
 
 public class StreamCollectorManager<T extends Tuple> implements Collector<T> {
@@ -53,7 +54,6 @@ public class StreamCollectorManager<T extends Tuple> implements Collector<T> {
 		}
 
 		for (int i = 0; i < batchSizesOfPartitioned.size(); i++) {
-			@SuppressWarnings("unchecked")
 			StreamCollector<Tuple>[] collectors = new StreamCollector[parallelismOfOutput.get(i)];
 			for (int j = 0; j < collectors.length; j++) {
 				collectors[j] = new StreamCollector<Tuple>(batchSizesOfPartitioned.get(i),

@@ -13,38 +13,29 @@
  *
  **********************************************************************************************************************/
 
-package eu.stratosphere.streaming.api.function;
+package eu.stratosphere.streaming.api;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
-
-import eu.stratosphere.api.java.tuple.Tuple1;
+import eu.stratosphere.api.java.tuple.Tuple;
+import eu.stratosphere.streaming.api.invokable.UserSinkInvokable;
+import eu.stratosphere.streaming.api.streamrecord.StreamRecord;
 import eu.stratosphere.util.Collector;
 
-public class FileStreamFunction extends SourceFunction<Tuple1<String>>{
+public class SinkInvokable<IN extends Tuple> extends UserSinkInvokable<IN> {
 	private static final long serialVersionUID = 1L;
-	
-	private final String path;
-	private Tuple1<String> outTuple = new Tuple1<String>();
-	
-	public FileStreamFunction(String path) {
-		this.path = path;
+
+	private SinkFunction<IN> sinkFunction;
+
+	public SinkInvokable(SinkFunction<IN> sinkFunction) {
+		this.sinkFunction = sinkFunction;
 	}
-	
+
 	@Override
-	public void invoke(Collector<Tuple1<String>> collector) throws IOException {
-		while(true){
-			BufferedReader br = new BufferedReader(new FileReader(path));
-			String line = br.readLine();
-			while (line != null) {
-				if (line != "") {
-					outTuple.f0 = line;
-					collector.collect(outTuple);
-				}
-				line = br.readLine();
-			}
-			br.close();
+	public void invoke(StreamRecord record, Collector<Tuple> collector) throws Exception {
+		int batchSize = record.getBatchSize();
+		for (int i = 0; i < batchSize; i++) {
+			@SuppressWarnings("unchecked")
+			IN tuple = (IN) record.getTuple(i);
+			sinkFunction.invoke(tuple);
 		}
 	}
 }

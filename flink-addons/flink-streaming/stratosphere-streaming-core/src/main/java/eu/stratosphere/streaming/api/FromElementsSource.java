@@ -13,32 +13,32 @@
  *
  **********************************************************************************************************************/
 
-package eu.stratosphere.streaming.api.function;
+package eu.stratosphere.streaming.api;
+
+import java.util.Arrays;
+import java.util.Collection;
 
 import eu.stratosphere.api.java.tuple.Tuple1;
 import eu.stratosphere.util.Collector;
 
-/**
- * Source Function used to generate the number sequence
- * 
- */
-public class GenSequenceFunction extends SourceFunction<Tuple1<Long>> {
-
+public class FromElementsSource<T> extends SourceFunction<Tuple1<T>> {
 	private static final long serialVersionUID = 1L;
 
-	long from;
-	long to;
-	Tuple1<Long> outTuple = new Tuple1<Long>();
+	Iterable<T> iterable;
+	Tuple1<T> outTuple = new Tuple1<T>();
 
-	public GenSequenceFunction(long from, long to) {
-		this.from = from;
-		this.to = to;
+	public FromElementsSource(T... elements) {
+		this.iterable = (Iterable<T>) Arrays.asList(elements);
+	}
+
+	public FromElementsSource(Collection<T> elements) {
+		this.iterable = (Iterable<T>) elements;
 	}
 
 	@Override
-	public void invoke(Collector<Tuple1<Long>> collector) throws Exception {
-		for (long i = from; i <= to; i++) {
-			outTuple.f0 = i;
+	public void invoke(Collector<Tuple1<T>> collector) throws Exception {
+		for (T element : iterable) {
+			outTuple.f0 = element;
 			collector.collect(outTuple);
 		}
 	}

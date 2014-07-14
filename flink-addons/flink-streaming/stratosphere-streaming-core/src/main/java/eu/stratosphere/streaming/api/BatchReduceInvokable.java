@@ -12,41 +12,27 @@
  * specific language governing permissions and limitations under the License.
  *
  **********************************************************************************************************************/
+package eu.stratosphere.streaming.api;
 
-package eu.stratosphere.streaming.examples.iterative.sssp;
+import java.util.Iterator;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
-
-import eu.stratosphere.api.java.tuple.Tuple3;
-import eu.stratosphere.streaming.api.SourceFunction;
+import eu.stratosphere.api.java.functions.GroupReduceFunction;
+import eu.stratosphere.api.java.tuple.Tuple;
+import eu.stratosphere.streaming.api.invokable.UserTaskInvokable;
+import eu.stratosphere.streaming.api.streamrecord.StreamRecord;
 import eu.stratosphere.util.Collector;
 
-public class SSSPSource extends SourceFunction<Tuple3<Integer, Integer, Long>> {
+public class BatchReduceInvokable<IN extends Tuple, OUT extends Tuple> extends UserTaskInvokable<IN, OUT> {
 	private static final long serialVersionUID = 1L;
 	
-	private Tuple3<Integer, Integer, Long> outRecord = new Tuple3<Integer, Integer, Long>();
-	private Long timestamp = 0L;
+	private GroupReduceFunction<IN, OUT> reducer;
+	public BatchReduceInvokable(GroupReduceFunction<IN, OUT> reduceFunction) {
+		this.reducer = reduceFunction; 
+	}
 	
 	@Override
-	public void invoke(Collector<Tuple3<Integer, Integer, Long>> collector)
-			throws Exception {
-		BufferedReader br = new BufferedReader(new FileReader(
-				"src/test/resources/testdata/ASTopology.data"));
-		while (true) {
-			String line = br.readLine();
-			if (line == null) {
-				break;
-			}
-			if (line != "") {
-				String[] link=line.split(":");
-				outRecord.f0 = Integer.valueOf(link[0]);
-				outRecord.f1 = Integer.valueOf(link[1]);
-				outRecord.f2 = timestamp;
-				collector.collect(outRecord);
-				timestamp += 1;
-			}
-		}		
+	public void invoke(StreamRecord record, Collector<OUT> collector) throws Exception {
+		Iterator<IN> iterator = (Iterator<IN>) record.getBatchIterable().iterator();
+		reducer.reduce(iterator, collector);
 	}
-
 }

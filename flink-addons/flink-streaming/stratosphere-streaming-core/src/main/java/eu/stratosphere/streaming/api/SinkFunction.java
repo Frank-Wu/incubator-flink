@@ -13,28 +13,17 @@
  *
  **********************************************************************************************************************/
 
-package eu.stratosphere.streaming.api.invokable;
+package eu.stratosphere.streaming.api;
 
-import eu.stratosphere.api.java.functions.FlatMapFunction;
+import java.io.Serializable;
+
+import eu.stratosphere.api.common.functions.AbstractFunction;
 import eu.stratosphere.api.java.tuple.Tuple;
-import eu.stratosphere.streaming.api.streamrecord.StreamRecord;
-import eu.stratosphere.util.Collector;
 
-public class FlatMapInvokable<T extends Tuple, R extends Tuple> extends UserTaskInvokable<T, R> {
+public abstract class SinkFunction<IN extends Tuple> extends AbstractFunction implements Serializable {
+
 	private static final long serialVersionUID = 1L;
 
-	private FlatMapFunction<T, R> flatMapper;
-	public FlatMapInvokable(FlatMapFunction<T, R> flatMapper) {
-		this.flatMapper = flatMapper;
-	}
-	
-	@Override
-	public void invoke(StreamRecord record, Collector<R> collector) throws Exception {
-		int batchSize = record.getBatchSize();
-		for (int i = 0; i < batchSize; i++) {
-			@SuppressWarnings("unchecked")
-			T tuple = (T) record.getTuple(i);
-			flatMapper.flatMap(tuple, collector);
-		}
-	}		
+	public abstract void invoke(IN tuple);
+
 }

@@ -16,7 +16,7 @@
 package eu.stratosphere.streaming.examples.iterative.pagerank;
 
 import eu.stratosphere.api.java.tuple.Tuple3;
-import eu.stratosphere.streaming.api.function.SinkFunction;
+import eu.stratosphere.streaming.api.SinkFunction;
 
 public class PageRankSink extends SinkFunction<Tuple3<Integer, Float, Long>> {
 	private static final long serialVersionUID = 1L;

@@ -16,7 +16,7 @@
 package eu.stratosphere.streaming.examples.window.sum;
 
 import eu.stratosphere.api.java.tuple.Tuple2;
-import eu.stratosphere.streaming.api.function.SinkFunction;
+import eu.stratosphere.streaming.api.SinkFunction;
 
 public class WindowSumSink extends SinkFunction<Tuple2<Integer, Long>> {
 	private static final long serialVersionUID = 1L;

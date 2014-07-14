@@ -25,7 +25,6 @@ import org.junit.Test;
 
 import eu.stratosphere.api.java.functions.FlatMapFunction;
 import eu.stratosphere.api.java.tuple.Tuple1;
-import eu.stratosphere.streaming.api.function.SinkFunction;
 import eu.stratosphere.util.Collector;
 
 public class FlatMapTest {
