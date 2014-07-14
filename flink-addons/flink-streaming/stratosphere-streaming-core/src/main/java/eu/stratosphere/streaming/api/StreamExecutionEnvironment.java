@@ -22,7 +22,6 @@ import java.util.Collection;
 
 import eu.stratosphere.api.common.functions.AbstractFunction;
 import eu.stratosphere.api.java.ExecutionEnvironment;
-import eu.stratosphere.api.java.LocalEnvironment;
 import eu.stratosphere.api.java.RemoteEnvironment;
 import eu.stratosphere.api.java.tuple.Tuple;
 import eu.stratosphere.api.java.tuple.Tuple1;
@@ -121,7 +120,7 @@ public abstract class StreamExecutionEnvironment {
 	 * executed in {@link LocalStreamEnvironment}.
 	 * 
 	 * @param degreeOfParallelism
-	 *            The degree of parallelismenvironment
+	 *            The degree of parallelism
 	 */
 	public void setExecutionParallelism(int degreeOfParallelism) {
 		if (degreeOfParallelism < 1)
@@ -304,16 +303,17 @@ public abstract class StreamExecutionEnvironment {
 	}
 
 	protected <T extends Tuple, R extends Tuple> void addIterationSource(DataStream<T> inputStream) {
-		DataStream<R> returnStream = new DataStream<R>(this, "");
+		DataStream<R> returnStream = new DataStream<R>(this, "iterationHead");
 
 		jobGraphBuilder.setIterationSource(returnStream.getId(), inputStream.getId(),
 				degreeOfParallelism);
+		
 
 		jobGraphBuilder.shuffleConnect(returnStream.getId(), inputStream.getId());
 	}
 
 	protected <T extends Tuple, R extends Tuple> void addIterationSink(DataStream<T> inputStream) {
-		DataStream<R> returnStream = new DataStream<R>(this, "");
+		DataStream<R> returnStream = new DataStream<R>(this, "iterationTail");
 
 		jobGraphBuilder.setIterationSink(returnStream.getId(), inputStream.getId(),
 				degreeOfParallelism);
@@ -345,10 +345,6 @@ public abstract class StreamExecutionEnvironment {
 		return returnStream;
 	}
 
-	<T extends Tuple> void addDirectedEmit(String id, OutputSelector<T> outputSelector) {
-		jobGraphBuilder.setOutputSelector(id, serializeToByteArray(outputSelector));
-	}
-	
 	/**
 	 * Writes a DataStream to the standard output stream (stdout). For each
 	 * element of the DataStream the result of {@link Object#toString()} is
@@ -434,10 +430,6 @@ public abstract class StreamExecutionEnvironment {
 		}
 	}
 
-	protected <T extends Tuple> void setName(DataStream<T> stream, String name) {
-		jobGraphBuilder.setUserDefinedName(stream.getId(), name);
-	}
-	
 	/**
 	 * Sets the proper parallelism for the given operator in the JobGraph
 	 * 
@@ -447,7 +439,7 @@ public abstract class StreamExecutionEnvironment {
 	 *            type of the operator
 	 */
 	protected <T extends Tuple> void setOperatorParallelism(DataStream<T> inputStream) {
-		jobGraphBuilder.setParallelism(inputStream.getId(), inputStream.dop);
+		jobGraphBuilder.setParallelism(inputStream.getId(), inputStream.degreeOfParallelism);
 	}
 
 	/**

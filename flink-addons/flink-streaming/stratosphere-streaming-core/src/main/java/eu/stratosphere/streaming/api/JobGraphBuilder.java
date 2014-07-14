@@ -38,7 +38,6 @@ import eu.stratosphere.nephele.jobgraph.JobTaskVertex;
 import eu.stratosphere.pact.runtime.task.util.TaskConfig;
 import eu.stratosphere.runtime.io.api.ChannelSelector;
 import eu.stratosphere.runtime.io.channels.ChannelType;
-import eu.stratosphere.streaming.api.invokable.StreamComponentInvokable;
 import eu.stratosphere.streaming.api.invokable.UserSinkInvokable;
 import eu.stratosphere.streaming.api.invokable.UserSourceInvokable;
 import eu.stratosphere.streaming.api.invokable.UserTaskInvokable;
@@ -65,7 +64,6 @@ public class JobGraphBuilder {
 	protected Map<String, Integer> numberOfInstances;
 	protected Map<String, List<String>> edgeList;
 	protected Map<String, List<Class<? extends ChannelSelector<StreamRecord>>>> connectionTypes;
-	protected Map<String, String> userDefinedNames;
 	protected boolean iterationStart;
 	protected Stack<String> iterationStartPoints;
 	protected String maxParallelismVertexName;
@@ -88,7 +86,6 @@ public class JobGraphBuilder {
 		numberOfInstances = new HashMap<String, Integer>();
 		edgeList = new HashMap<String, List<String>>();
 		connectionTypes = new HashMap<String, List<Class<? extends ChannelSelector<StreamRecord>>>>();
-		userDefinedNames = new HashMap<String, String>();
 		iterationStartPoints = new Stack<String>();
 		maxParallelismVertexName = "";
 		maxParallelism = 0;
@@ -144,6 +141,9 @@ public class JobGraphBuilder {
 		setComponent(sourceName, source, null, null, null, parallelism);
 
 		setBytesFrom(iterationHead, sourceName);
+		
+		//TODO: get iteration-id from IterativeDataSet
+		components.get(sourceName).getConfiguration().setString("iteration-id", "iteration-0");
 
 		if (log.isDebugEnabled()) {
 			log.debug("Iteration head source: " + sourceName);
@@ -216,6 +216,9 @@ public class JobGraphBuilder {
 		if (log.isDebugEnabled()) {
 			log.debug("Iteration tail sink: " + sinkName);
 		}
+		
+		//TODO: get iteration-id from IterativeDataSet
+		components.get(sinkName).getConfiguration().setString("iteration-id", "iteration-0");
 
 	}
 
@@ -313,27 +316,6 @@ public class JobGraphBuilder {
 				+ (components.get(componentName).getNumberOfForwardConnections() - 1), batchSize);
 	}
 
-	public void setUserDefinedName(String componentName, String userDefinedName) {
-		userDefinedNames.put(componentName, userDefinedName);
-		Configuration config = components.get(componentName).getConfiguration();
-		config.setString("userDefinedName", userDefinedName);
-
-		setOutputNameOfAlreadyConnected(componentName, userDefinedName);
-	}
-
-	private void setOutputNameOfAlreadyConnected(String outComponentName,
-			String userDefinedNameOfOutput) {
-		for (String componentName : edgeList.keySet()) {
-			List<String> outEdge = edgeList.get(componentName);
-			int index = outEdge.indexOf(outComponentName);
-			if (index != -1) {
-				AbstractJobVertex component = components.get(componentName);
-				Configuration config = component.getConfiguration();
-				config.setString("outputName_" + index, userDefinedNameOfOutput);
-			}
-		}
-	}
-
 	/**
 	 * Sets the number of parallel instances created for the given component.
 	 * 
@@ -398,19 +380,13 @@ public class JobGraphBuilder {
 			Configuration config = new TaskConfig(upStreamComponent.getConfiguration())
 					.getConfiguration();
 
-			int outputIndex = upStreamComponent.getNumberOfForwardConnections() - 1;
-			
-			config.setBoolean("isPartitionedOutput_" + outputIndex, true);
-			
-			putOutputNameToConfig(upStreamComponentName, downStreamComponentName, outputIndex);
-			
 			config.setClass(
-					"partitionerClass_" + outputIndex,
+					"partitionerClass_" + (upStreamComponent.getNumberOfForwardConnections() - 1),
 					FieldsPartitioner.class);
 
 			config.setInteger(
 					"partitionerIntParam_"
-							+ outputIndex, keyPosition);
+							+ (upStreamComponent.getNumberOfForwardConnections() - 1), keyPosition);
 
 			if (log.isDebugEnabled()) {
 				log.debug("CONNECTED: FIELD PARTITIONING - " + upStreamComponentName + " -> "
@@ -501,9 +477,6 @@ public class JobGraphBuilder {
 			config.setClass(
 					"partitionerClass_" + (upStreamComponent.getNumberOfForwardConnections() - 1),
 					PartitionerClass);
-
-			putOutputNameToConfig(upStreamComponentName, downStreamComponentName, upStreamComponent.getNumberOfForwardConnections() - 1);
-			
 			if (log.isDebugEnabled()) {
 				log.debug("CONNECTED: " + PartitionerClass.getSimpleName() + " - "
 						+ upStreamComponentName + " -> " + downStreamComponentName);
@@ -514,24 +487,6 @@ public class JobGraphBuilder {
 						+ " : " + upStreamComponentName + " -> " + downStreamComponentName, e);
 			}
 		}
-	}
-	
-	private void putOutputNameToConfig(String upStreamComponentName, String downStreamComponentName, int index) {
-		Configuration config = new TaskConfig(components.get(upStreamComponentName).getConfiguration())
-		.getConfiguration();
-		String outputName = userDefinedNames.get(downStreamComponentName);
-		if (outputName == null) {
-			outputName = "";
-		}
-		
-		config.setString("outputName_"
-				+ (index), outputName);
-	}
-	
-	<T extends Tuple> void setOutputSelector(String id, byte[] serializedOutputSelector) {
-		Configuration config = components.get(id).getConfiguration();
-		config.setBoolean("directedEmit", true);
-		config.setBytes("outputSelector", serializedOutputSelector);
 	}
 
 	/**
