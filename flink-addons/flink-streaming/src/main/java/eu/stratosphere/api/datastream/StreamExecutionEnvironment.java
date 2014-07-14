@@ -1,18 +1,3 @@
-/***********************************************************************************************************************
- *
- * Copyright (C) 2010-2014 by the Stratosphere project (http://stratosphere.eu)
- *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
- * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
- * specific language governing permissions and limitations under the License.
- *
- **********************************************************************************************************************/
-
 package eu.stratosphere.api.datastream;
 
 import java.io.ByteArrayOutputStream;
@@ -20,7 +5,6 @@ import java.io.IOException;
 import java.io.ObjectOutputStream;
 
 import eu.stratosphere.api.java.functions.FlatMapFunction;
-import eu.stratosphere.api.java.functions.MapFunction;
 import eu.stratosphere.api.java.tuple.Tuple;
 import eu.stratosphere.api.java.tuple.Tuple1;
 import eu.stratosphere.api.java.typeutils.TypeExtractor;
@@ -49,15 +33,13 @@ public class StreamExecutionEnvironment {
 		private static final long serialVersionUID = 1L;
 
 		@Override
-		public void invoke(Collector<Tuple> c) throws Exception {
-			// StreamRecord outRecord = new ArrayStreamRecord(1);
+		public void invoke(Collector<Tuple1<String>> collector) throws Exception {
 
 			for (int i = 0; i < 10; i++) {
-
-				c.collect(new Tuple1<String>("win"));
-				System.out.println("source");
+				collector.collect(new Tuple1<String>("source"));
 			}
 		}
+
 	}
 
 	public <T extends Tuple, R extends Tuple> DataStream<R> addFlatMapFunction(
@@ -82,34 +64,35 @@ public class StreamExecutionEnvironment {
 		return returnStream;
 	}
 
-	public <T extends Tuple, R extends Tuple> DataStream<R> addMapFunction(
-			DataStream<T> inputStream, final MapFunction<T, R> mapper) {
-		DataStream<R> returnStream = new DataStream<R>(this);
-
-		ByteArrayOutputStream baos = new ByteArrayOutputStream();
-		ObjectOutputStream oos;
-		try {
-			oos = new ObjectOutputStream(baos);
-			oos.writeObject(mapper);
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-
-		jobGraphBuilder.setTask(returnStream.getId(), new MapInvokable<T, R>(mapper),
-				"map", baos.toByteArray());
-
-		jobGraphBuilder.shuffleConnect(inputStream.getId(), returnStream.getId());
-
-		return returnStream;
-	}
+	// public <T, R> DataStream<R> addMapFunction(DataStream<T> inputStream,
+	// final MapFunction<T, R> mapper, TypeInformation<R> returnType) {
+	// DataStream<R> returnStream = new DataStream<R>(this, returnType);
+	//
+	// jobGraphBuilder.setTask(inputStream.getId(), new UserTaskInvokable() {
+	// private static final long serialVersionUID = 1L;
+	// private StreamRecord outRecord = new ArrayStreamRecord(BATCH_SIZE);
+	//
+	// @Override
+	// public void invoke(StreamRecord record) throws Exception {
+	// int batchSize = record.getBatchSize();
+	// for (int i = 0; i < batchSize; i++) {
+	// T tuple = (T) record.getTuple(i);
+	// R resultTuple = mapper.map(tuple);
+	// outRecord.setTuple(i, (Tuple) resultTuple);
+	// }
+	// }
+	// });
+	//
+	// jobGraphBuilder.shuffleConnect(inputStream.getId(),
+	// returnStream.getId());
+	// return returnStream;
+	// }
 
 	public static final class DummySink extends UserSinkInvokable<Tuple1<String>> {
 		private static final long serialVersionUID = 1L;
 
 		@Override
-		public void invoke(StreamRecord record, StreamCollector<Tuple1<String>> collector)
-				throws Exception {
+		public void invoke(StreamRecord record, StreamCollector<Tuple> collector) throws Exception {
 			for (Tuple tuple : record.getBatchIterable()) {
 				System.out.println(tuple);
 			}
@@ -129,7 +112,7 @@ public class StreamExecutionEnvironment {
 			e.printStackTrace();
 		}
 
-		jobGraphBuilder.setSink("sink", new DummySink(),"sink" ,baos.toByteArray());
+		jobGraphBuilder.setSink("sink", new DummySink(), "sink", baos.toByteArray());
 
 		jobGraphBuilder.shuffleConnect(inputStream.getId(), "sink");
 		return new DataStream<R>(this);
@@ -152,7 +135,8 @@ public class StreamExecutionEnvironment {
 			e.printStackTrace();
 		}
 
-		jobGraphBuilder.setSource(returnStream.getId(), new DummySource(), "source",baos.toByteArray());
+		jobGraphBuilder.setSource(returnStream.getId(), new DummySource(), "source",
+				baos.toByteArray());
 		return returnStream;
 	}
 
