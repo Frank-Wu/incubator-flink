@@ -19,11 +19,12 @@
 
 package org.apache.flink.streaming.state;
 
-import org.apache.flink.streaming.state.SlidingWindowState;
+import java.util.ArrayList;
+
+import org.apache.flink.streaming.state.SlidingWindow;
 import org.apache.flink.streaming.state.TableState;
 import org.apache.flink.streaming.state.TableStateIterator;
 import org.junit.Test;
-
 import org.apache.flink.api.java.tuple.Tuple2;
 
 public class InternalStateTest {
@@ -54,10 +55,26 @@ public class InternalStateTest {
 		}
 	}
 
-	@SuppressWarnings({ "rawtypes", "unused" })
 	@Test
 	public void WindowStateTest() {
-		SlidingWindowState state = new SlidingWindowState(100, 20, 10);
-
+		SlidingWindow state = new SlidingWindow(10, 2, 1);
+		for (int i = 0; i < 5; ++i) {
+			Tuple2<String, Integer> tuple1 = new Tuple2<String, Integer>();
+			tuple1.f0 = "hello";
+			tuple1.f1 = 100 + i;
+			Tuple2<String, Integer> tuple2 = new Tuple2<String, Integer>();
+			tuple2.f0 = "world";
+			tuple2.f1 = 200 + i;
+			ArrayList<Tuple2<String, Integer>> tupleArray = new ArrayList<Tuple2<String, Integer>>();
+			tupleArray.add(tuple1);
+			tupleArray.add(tuple2);
+			state.pushBack(tupleArray);
+		}
+		SlidingWindowIterator<Tuple2<String, Integer>> iterator = 
+				new SlidingWindowIterator<Tuple2<String, Integer>>(state);
+		while(iterator.hasNext()){
+			Tuple2<String, Integer> tuple = iterator.next();
+			System.out.println(tuple.f0+", "+tuple.f1);
+		}
 	}
 }

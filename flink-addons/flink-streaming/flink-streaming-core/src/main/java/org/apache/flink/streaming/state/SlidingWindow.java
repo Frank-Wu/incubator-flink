@@ -32,15 +32,15 @@ import org.apache.flink.api.java.tuple.Tuple;
  * compose time based window operator by extending this class by splitting the
  * stream into multiple mini batches.
  */
-public class SlidingWindowState<InTuple extends Tuple> implements Serializable {
+public class SlidingWindow<InTuple extends Tuple> implements Serializable{
 	private static final long serialVersionUID = -2376149970115888901L;
 	private int currentRecordCount;
 	private int fullRecordCount;
 	private int slideRecordCount;
 
-	CircularFifoBuffer buffer;
+	private CircularFifoBuffer buffer;
 
-	public SlidingWindowState(int windowSize, int slidingStep, int computeGranularity) {
+	public SlidingWindow(int windowSize, int slidingStep, int computeGranularity) {
 		this.currentRecordCount = 0;
 		// here we assume that windowSize and slidingStep is divisible by
 		// computeGranularity.
@@ -71,6 +71,10 @@ public class SlidingWindowState<InTuple extends Tuple> implements Serializable {
 			return true;
 		}
 		return false;
+	}
+	
+	public CircularFifoBuffer getBuffer(){
+		return buffer;
 	}
 
 }

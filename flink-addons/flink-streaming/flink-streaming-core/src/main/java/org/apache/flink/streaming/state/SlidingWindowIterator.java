@@ -19,41 +19,33 @@
 
 package org.apache.flink.streaming.state;
 
-import java.io.Serializable;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.Iterator;
 
-/**
- * The most general internal state that stores data in a mutable map.
- */
-public class MutableTableState<K, V> extends TableState<K, V> implements Serializable {
-	private static final long serialVersionUID = 1L;
+import org.apache.flink.api.java.tuple.Tuple;
 
-	private Map<K, V> state = new LinkedHashMap<K, V>();
-
-	@Override
-	public void put(K key, V value) {
-		state.put(key, value);
+public class SlidingWindowIterator<InTuple extends Tuple>{
+	
+	private Iterator<ArrayList<InTuple>> bufferIterator = null;
+	private Iterator<InTuple> arrayIterator = null;
+	public SlidingWindowIterator(SlidingWindow<InTuple> slidingWindow){
+		bufferIterator = slidingWindow.getBuffer().iterator();
+		System.out.println(slidingWindow.getBuffer().size());
+	}
+	
+	public boolean hasNext() {
+		if(arrayIterator!=null && arrayIterator.hasNext()){
+			return true;
+		}else if(bufferIterator.hasNext()){
+			arrayIterator=((ArrayList<InTuple>) bufferIterator.next()).iterator();
+			return true;
+		}else{
+			return false;
+		}
 	}
 
-	@Override
-	public V get(K key) {
-		return state.get(key);
-	}
-
-	@Override
-	public void delete(K key) {
-		state.remove(key);
-	}
-
-	@Override
-	public boolean containsKey(K key) {
-		return state.containsKey(key);
-	}
-
-	@Override
-	public MutableTableStateIterator<K, V> getIterator() {
-		return new MutableTableStateIterator<K, V>(state.entrySet().iterator());
+	public InTuple next() {
+		return arrayIterator.next();
 	}
 
 }
