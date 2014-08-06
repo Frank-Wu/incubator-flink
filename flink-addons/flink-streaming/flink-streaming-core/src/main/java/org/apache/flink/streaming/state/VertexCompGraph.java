@@ -20,32 +20,16 @@
 package org.apache.flink.streaming.state;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 
-public class GraphState {
-	public Map<Integer, Set<Integer>> vertices = null;
-
-	public GraphState() {
-		vertices = new HashMap<Integer, Set<Integer>>();
-	}
-
-	public void insertDirectedEdge(int sourceNode, int targetNode) {
-		if (!vertices.containsKey(sourceNode)) {
-			vertices.put(sourceNode, new HashSet<Integer>());
-		}
-		vertices.get(sourceNode).add(targetNode);
+public class VertexCompGraph<T>{
+	public Map<Integer, T> _vertices=null;
+	
+	public VertexCompGraph(){
+		_vertices=new HashMap<Integer, T>();
 	}
 	
-	public void insertUndirectedEdge(int sourceNode, int targetNode){
-		if(!vertices.containsKey(sourceNode)){
-			vertices.put(sourceNode, new HashSet<Integer>());
-		}
-		if(!vertices.containsKey(targetNode)){
-			vertices.put(targetNode, new HashSet<Integer>());
-		}
-		vertices.get(sourceNode).add(targetNode);
-		vertices.get(targetNode).add(sourceNode);
+	public void setValue(int node, T value){
+		_vertices.put(node, value);
 	}
 }
