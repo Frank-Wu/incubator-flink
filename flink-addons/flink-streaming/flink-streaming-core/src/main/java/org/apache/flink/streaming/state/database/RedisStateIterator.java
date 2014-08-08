@@ -19,31 +19,28 @@
 
 package org.apache.flink.streaming.state.database;
 
-import org.junit.Test;
+import static org.fusesource.leveldbjni.JniDBFactory.asString;
 
-public class DatabaseTest {
-	
-	@Test
-	public void LeveldbTest(){
-		LeveldbState state=new LeveldbState("test");
-		state.setTuple("hello", "world");
-		System.out.println(state.getTuple("hello"));
-		state.setTuple("big", "data");
-		state.setTuple("flink", "streaming");
-		LeveldbStateIterator iterator=state.getIterator();
-		while(iterator.hasNext()){
-			String key=iterator.getNextKey();
-			String value=iterator.getNextValue();
-			System.out.println("key="+key+", value="+value);
-			iterator.next();
-		}
-		state.close();
+import org.iq80.leveldb.DBIterator;
+
+public class RedisStateIterator {
+	DBIterator iterator;
+	public RedisStateIterator(){
 	}
 	
-	@Test
-	public void RedisTest(){
-		RedisState state=new RedisState();
-		state.setTuple("hello", "world");
-		System.out.println(state.getTuple("hello"));
+	public boolean hasNext(){
+		return iterator.hasNext();
+	}
+	
+	public String getNextKey(){
+		return asString(iterator.peekNext().getKey());
+	}
+	
+	public String getNextValue(){
+		return asString(iterator.peekNext().getValue());
+	}
+	
+	public void next(){
+		iterator.next();
 	}
 }

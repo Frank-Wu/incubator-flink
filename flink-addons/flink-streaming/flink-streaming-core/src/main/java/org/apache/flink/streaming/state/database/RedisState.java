@@ -19,6 +19,33 @@
 
 package org.apache.flink.streaming.state.database;
 
-public class SqliteState {
+import redis.clients.jedis.Jedis;
+
+//this is the redis-supported state. To use this state, the users are required to boot their redis server first.
+public class RedisState {
+	
+	private Jedis jedis;
+	
+	public RedisState(){
+		jedis = new Jedis("localhost");
+	}
+	
+	
+	public void setTuple(String key, String value){
+		jedis.set(key, value);
+	}
+	
+	public String getTuple(String key){
+		return jedis.get(key);
+	}
+	
+	public void deleteTuple(String key){
+		jedis.del(key);
+	}
+	
+	public RedisStateIterator getIterator(){
+//		ScanResult<String> result = jedis.sscan("foo", SCAN_POINTER_START);
+		return new RedisStateIterator();
+	}
 
 }
