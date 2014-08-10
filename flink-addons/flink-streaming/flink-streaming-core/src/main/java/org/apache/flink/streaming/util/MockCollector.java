@@ -17,35 +17,25 @@
  *
  */
 
-package org.apache.flink.streaming.api.function.source;
+package org.apache.flink.streaming.util;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
+import java.util.Collection;
 
 import org.apache.flink.util.Collector;
 
-public class FileStreamFunction implements SourceFunction<String> {
-	private static final long serialVersionUID = 1L;
-
-	private final String path;
-
-	public FileStreamFunction(String path) {
-		this.path = path;
+public class MockCollector<T> implements Collector<T> {
+	private Collection<T> outputs;
+	
+	public MockCollector(Collection<T> outputs) {
+		this.outputs = outputs;
 	}
 
 	@Override
-	public void invoke(Collector<String> collector) throws IOException {
-		while (true) {
-			BufferedReader br = new BufferedReader(new FileReader(path));
-			String line = br.readLine();
-			while (line != null) {
-				if (!line.equals("")) {
-					collector.collect(line);
-				}
-				line = br.readLine();
-			}
-			br.close();
-		}
+	public void collect(T record) {
+		outputs.add(record);
+	}
+
+	@Override
+	public void close() {
 	}
 }

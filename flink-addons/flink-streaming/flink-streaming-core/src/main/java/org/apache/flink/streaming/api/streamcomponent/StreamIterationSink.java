@@ -26,7 +26,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.flink.api.java.tuple.Tuple;
 import org.apache.flink.streaming.api.streamrecord.StreamRecord;
-import org.apache.flink.util.MutableObjectIterator;
 import org.apache.flink.util.StringUtils;
 
 public class StreamIterationSink<IN extends Tuple> extends
@@ -34,10 +33,11 @@ public class StreamIterationSink<IN extends Tuple> extends
 
 	private static final Log LOG = LogFactory.getLog(StreamIterationSink.class);
 
-	MutableObjectIterator<StreamRecord<IN>> inputIter;
 	private String iterationId;
 	@SuppressWarnings("rawtypes")
 	private BlockingQueue<StreamRecord> dataChannel;
+	private long iterationWaitTime;
+	private boolean shouldWait;
 
 	public StreamIterationSink() {
 	}
@@ -51,6 +51,8 @@ public class StreamIterationSink<IN extends Tuple> extends
 			inputIter = createInputIterator(inputs, inputSerializer);
 
 			iterationId = configuration.getIterationId();
+			iterationWaitTime = configuration.getIterationWaitTime();
+			shouldWait = iterationWaitTime > 0;
 			dataChannel = BlockingQueueBroker.instance().get(iterationId);
 
 		} catch (Exception e) {
@@ -73,22 +75,30 @@ public class StreamIterationSink<IN extends Tuple> extends
 	}
 
 	protected void forwardRecords() throws Exception {
-		StreamRecord<IN> reuse = inputSerializer.createInstance().setId(0);
+		StreamRecord<IN> reuse = inputSerializer.createInstance();
 		while ((reuse = inputIter.next(reuse)) != null) {
-			pushToQueue(reuse);
+			if (!pushToQueue(reuse)) {
+				break;
+			}
 			// TODO: Fix object reuse for iteration
 			reuse = inputSerializer.createInstance();
 		}
 	}
 
-	private void pushToQueue(StreamRecord<IN> record) {
+	private boolean pushToQueue(StreamRecord<IN> record) {
 		try {
-			dataChannel.offer(record, 5, TimeUnit.MILLISECONDS);
+			if (shouldWait) {
+				return dataChannel.offer(record, iterationWaitTime, TimeUnit.MILLISECONDS);
+			} else {
+				dataChannel.put(record);
+				return true;
+			}
 		} catch (InterruptedException e) {
 			if (LOG.isErrorEnabled()) {
 				LOG.error(String.format("Pushing back record at iteration %s failed due to: %s",
 						iterationId, StringUtils.stringifyException(e)));
 			}
+			return false;
 		}
 	}
 

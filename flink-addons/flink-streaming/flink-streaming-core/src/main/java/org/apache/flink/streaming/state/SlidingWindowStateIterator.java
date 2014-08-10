@@ -19,18 +19,77 @@
 
 package org.apache.flink.streaming.state;
 
-import org.apache.flink.api.java.tuple.Tuple;
-import org.apache.flink.api.java.tuple.Tuple2;
+import java.util.Collection;
+import java.util.Iterator;
+
+import org.apache.commons.collections.buffer.CircularFifoBuffer;
+import org.apache.flink.streaming.api.invokable.operator.BatchIterator;
 import org.apache.flink.streaming.api.streamrecord.StreamRecord;
 
-public class SlidingWindowStateIterator<K>{
+public class SlidingWindowStateIterator<T> implements BatchIterator<T> {
+
+	private CircularFifoBuffer buffer;
+	private Iterator<Collection<StreamRecord<T>>> iterator;
+	private Iterator<StreamRecord<T>> subIterator;
+	private Iterator<StreamRecord<T>> streamRecordIterator;
+
+	public SlidingWindowStateIterator(CircularFifoBuffer buffer) {
+		this.buffer = buffer;
+		this.streamRecordIterator = new StreamRecordIterator();
+	}
 
 	public boolean hasNext() {
-		return false;
+		return subIterator.hasNext();
 	}
 
-	public Tuple2<K, StreamRecord<Tuple>> next() {
-		return null;
+	public T next() {
+		T nextElement = subIterator.next().getObject();
+		if (!subIterator.hasNext()) {
+			if (iterator.hasNext()) {
+				subIterator = iterator.next().iterator();
+			}
+		}
+		return nextElement;
 	}
 
+	@Override
+	public void remove() {
+		throw new RuntimeException("Cannot use remove on reducing iterator.");
+	}
+
+	@SuppressWarnings("unchecked")
+	@Override
+	public void reset() {
+		iterator = buffer.iterator();
+		subIterator = iterator.next().iterator();
+	}
+
+	public Iterator<StreamRecord<T>> getStreamRecordIterator() {
+		return this.streamRecordIterator;
+	}
+
+	private class StreamRecordIterator implements Iterator<StreamRecord<T>> {
+
+		@Override
+		public boolean hasNext() {
+			return SlidingWindowStateIterator.this.hasNext();
+		}
+
+		@Override
+		public StreamRecord<T> next() {
+			StreamRecord<T> nextElement = subIterator.next();
+			if (!subIterator.hasNext()) {
+				if (iterator.hasNext()) {
+					subIterator = iterator.next().iterator();
+				}
+			}
+			return nextElement;
+		}
+
+		@Override
+		public void remove() {
+			SlidingWindowStateIterator.this.remove();
+		}
+
+	}
 }

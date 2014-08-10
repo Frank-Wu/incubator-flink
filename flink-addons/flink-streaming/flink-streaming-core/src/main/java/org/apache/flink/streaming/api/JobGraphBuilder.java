@@ -63,12 +63,12 @@ public class JobGraphBuilder {
 	private Map<String, AbstractJobVertex> components;
 	private Map<String, Integer> componentParallelism;
 	private Map<String, Long> bufferTimeout;
-	private Map<String, ArrayList<String>> outEdgeList;
-	private Map<String, ArrayList<Integer>> outEdgeType;
+	private Map<String, List<String>> outEdgeList;
+	private Map<String, List<Integer>> outEdgeType;
+	private Map<String, List<List<String>>> outEdgeNames;
 	private Map<String, Boolean> mutability;
 	private Map<String, List<String>> inEdgeList;
 	private Map<String, List<StreamPartitioner<?>>> connectionTypes;
-	private Map<String, List<String>> userDefinedNames;
 	private Map<String, String> operatorNames;
 	private Map<String, StreamComponentInvokable<?>> invokableObjects;
 	private Map<String, TypeSerializerWrapper<?, ?, ?>> typeWrappers;
@@ -76,8 +76,10 @@ public class JobGraphBuilder {
 	private Map<String, byte[]> outputSelectors;
 	private Map<String, Class<? extends AbstractInvokable>> componentClasses;
 	private Map<String, String> iterationIds;
-	private Map<String, String> iterationHeadNames;
+	private Map<String, String> iterationIDtoSourceName;
+	private Map<String, String> iterationIDtoSinkName;
 	private Map<String, Integer> iterationTailCount;
+	private Map<String, Long> iterationWaitTime;
 
 	private int degreeOfParallelism;
 	private int executionParallelism;
@@ -100,12 +102,12 @@ public class JobGraphBuilder {
 		components = new HashMap<String, AbstractJobVertex>();
 		componentParallelism = new HashMap<String, Integer>();
 		bufferTimeout = new HashMap<String, Long>();
-		outEdgeList = new HashMap<String, ArrayList<String>>();
-		outEdgeType = new HashMap<String, ArrayList<Integer>>();
+		outEdgeList = new HashMap<String, List<String>>();
+		outEdgeType = new HashMap<String, List<Integer>>();
+		outEdgeNames = new HashMap<String, List<List<String>>>();
 		mutability = new HashMap<String, Boolean>();
 		inEdgeList = new HashMap<String, List<String>>();
 		connectionTypes = new HashMap<String, List<StreamPartitioner<?>>>();
-		userDefinedNames = new HashMap<String, List<String>>();
 		operatorNames = new HashMap<String, String>();
 		invokableObjects = new HashMap<String, StreamComponentInvokable<?>>();
 		typeWrappers = new HashMap<String, TypeSerializerWrapper<?, ?, ?>>();
@@ -113,8 +115,10 @@ public class JobGraphBuilder {
 		outputSelectors = new HashMap<String, byte[]>();
 		componentClasses = new HashMap<String, Class<? extends AbstractInvokable>>();
 		iterationIds = new HashMap<String, String>();
-		iterationHeadNames = new HashMap<String, String>();
+		iterationIDtoSourceName = new HashMap<String, String>();
+		iterationIDtoSinkName = new HashMap<String, String>();
 		iterationTailCount = new HashMap<String, Integer>();
+		iterationWaitTime = new HashMap<String, Long>();
 
 		maxParallelismVertexName = "";
 		maxParallelism = 0;
@@ -177,19 +181,24 @@ public class JobGraphBuilder {
 	 *            ID of iteration for multiple iterations
 	 * @param parallelism
 	 *            Number of parallel instances created
+	 * @param waitTime
+	 *            Max wait time for next record
 	 */
 	public void addIterationSource(String componentName, String iterationHead, String iterationID,
-			int parallelism) {
+			int parallelism, long waitTime) {
 
 		addComponent(componentName, StreamIterationSource.class, null, null, null, null,
 				parallelism);
 		iterationIds.put(componentName, iterationID);
-		iterationHeadNames.put(iterationID, componentName);
+		iterationIDtoSourceName.put(iterationID, componentName);
 
 		setBytesFrom(iterationHead, componentName);
 
 		setEdge(componentName, iterationHead,
-				connectionTypes.get(inEdgeList.get(iterationHead).get(0)).get(0), 0);
+				connectionTypes.get(inEdgeList.get(iterationHead).get(0)).get(0), 0,
+				new ArrayList<String>());
+
+		iterationWaitTime.put(iterationIDtoSourceName.get(iterationID), waitTime);
 
 		if (LOG.isDebugEnabled()) {
 			LOG.debug("ITERATION SOURCE: " + componentName);
@@ -278,19 +287,17 @@ public class JobGraphBuilder {
 	 *            Number of parallel instances created
 	 * @param directName
 	 *            Id of the output direction
+	 * @param waitTime
+	 *            Max waiting time for next record
 	 */
 	public void addIterationSink(String componentName, String iterationTail, String iterationID,
-			int parallelism, String directName) {
+			int parallelism, long waitTime) {
 
 		addComponent(componentName, StreamIterationSink.class, null, null, null, null, parallelism);
 		iterationIds.put(componentName, iterationID);
+		iterationIDtoSinkName.put(iterationID, componentName);
 		setBytesFrom(iterationTail, componentName);
-
-		if (directName != null) {
-			setUserDefinedName(componentName, directName);
-		} else {
-			setUserDefinedName(componentName, "iterate");
-		}
+		iterationWaitTime.put(iterationIDtoSinkName.get(iterationID), waitTime);
 
 		if (LOG.isDebugEnabled()) {
 			LOG.debug("ITERATION SINK: " + componentName);
@@ -325,14 +332,13 @@ public class JobGraphBuilder {
 		componentClasses.put(componentName, componentClass);
 		typeWrappers.put(componentName, typeWrapper);
 		setParallelism(componentName, parallelism);
-		bufferTimeout.put(componentName, 0L);
 		mutability.put(componentName, false);
 		invokableObjects.put(componentName, invokableObject);
 		operatorNames.put(componentName, operatorName);
 		serializedFunctions.put(componentName, serializedFunction);
 		outEdgeList.put(componentName, new ArrayList<String>());
-		userDefinedNames.put(componentName, new ArrayList<String>());
 		outEdgeType.put(componentName, new ArrayList<Integer>());
+		outEdgeNames.put(componentName, new ArrayList<List<String>>());
 		inEdgeList.put(componentName, new ArrayList<String>());
 		connectionTypes.put(componentName, new ArrayList<StreamPartitioner<?>>());
 		iterationTailCount.put(componentName, 0);
@@ -354,7 +360,6 @@ public class JobGraphBuilder {
 		byte[] serializedFunction = serializedFunctions.get(componentName);
 		int parallelism = componentParallelism.get(componentName);
 		byte[] outputSelector = outputSelectors.get(componentName);
-		List<String> userDefinedName = userDefinedNames.get(componentName);
 
 		// Create vertex object
 		AbstractJobVertex component = null;
@@ -367,6 +372,8 @@ public class JobGraphBuilder {
 		} else if (componentClass.equals(StreamSink.class)
 				|| componentClass.equals(StreamIterationSink.class)) {
 			component = new JobOutputVertex(componentName, this.jobGraph);
+		} else {
+			throw new RuntimeException("Unsupported component class");
 		}
 
 		component.setInvokableClass(componentClass);
@@ -384,12 +391,12 @@ public class JobGraphBuilder {
 		config.setUserInvokable(invokableObject);
 		config.setComponentName(componentName);
 		config.setFunction(serializedFunction, operatorName);
-		config.setUserDefinedName(userDefinedName);
 		config.setOutputSelector(outputSelector);
 
 		if (componentClass.equals(StreamIterationSource.class)
 				|| componentClass.equals(StreamIterationSink.class)) {
 			config.setIterationId(iterationIds.get(componentName));
+			config.setIterationWaitTime(iterationWaitTime.get(componentName));
 		}
 
 		components.put(componentName, component);
@@ -398,29 +405,6 @@ public class JobGraphBuilder {
 			maxParallelism = parallelism;
 			maxParallelismVertexName = componentName;
 		}
-	}
-
-	/**
-	 * Sets the user defined name for the selected component
-	 * 
-	 * @param componentName
-	 *            Name of the component for which the user defined name will be
-	 *            set
-	 * @param userDefinedNames
-	 *            User defined name to set for the component
-	 */
-	public void setUserDefinedName(String componentName, List<String> userDefinedNames) {
-		this.userDefinedNames.put(componentName, userDefinedNames);
-
-		if (LOG.isDebugEnabled()) {
-			LOG.debug("Name set: " + userDefinedNames + " for " + componentName);
-		}
-	}
-
-	private void setUserDefinedName(String componentName, String userDefinedName) {
-		List<String> nameList = new ArrayList<String>();
-		nameList.add(userDefinedName);
-		setUserDefinedName(componentName, nameList);
 	}
 
 	/**
@@ -455,13 +439,16 @@ public class JobGraphBuilder {
 	 *            Partitioner object
 	 * @param typeNumber
 	 *            Number of the type (used at co-functions)
+	 * @param outputNames
+	 *            User defined names of the out edge
 	 */
 	public void setEdge(String upStreamComponentName, String downStreamComponentName,
-			StreamPartitioner<?> partitionerObject, int typeNumber) {
+			StreamPartitioner<?> partitionerObject, int typeNumber, List<String> outputNames) {
 		outEdgeList.get(upStreamComponentName).add(downStreamComponentName);
 		outEdgeType.get(upStreamComponentName).add(typeNumber);
 		inEdgeList.get(downStreamComponentName).add(upStreamComponentName);
 		connectionTypes.get(upStreamComponentName).add(partitionerObject);
+		outEdgeNames.get(upStreamComponentName).add(outputNames);
 	}
 
 	/**
@@ -504,24 +491,25 @@ public class JobGraphBuilder {
 
 		int outputIndex = upStreamComponent.getNumberOfForwardConnections() - 1;
 
-		config.setOutputName(outputIndex, userDefinedNames.get(downStreamComponentName));
+		config.setOutputName(outputIndex, outEdgeNames.get(upStreamComponentName).get(outputIndex));
 		config.setPartitioner(outputIndex, partitionerObject);
 		config.setNumberOfOutputChannels(outputIndex,
 				componentParallelism.get(downStreamComponentName));
 	}
 
 	/**
-	 * Sets the parallelism of the iteration head of the given iteration id to
-	 * the parallelism given.
+	 * Sets the parallelism and buffertimeout of the iteration head of the given
+	 * iteration id to the parallelism given.
 	 * 
 	 * @param iterationID
 	 *            ID of the iteration
-	 * @param parallelism
-	 *            Parallelism to set, typically the parallelism of the iteration
-	 *            tail.
+	 * @param iterationTail
+	 *            ID of the iteration tail
 	 */
-	public void setIterationSourceParallelism(String iterationID, int parallelism) {
-		setParallelism(iterationHeadNames.get(iterationID), parallelism);
+	public void setIterationSourceSettings(String iterationID, String iterationTail) {
+		setParallelism(iterationIDtoSourceName.get(iterationID),
+				componentParallelism.get(iterationTail));
+		setBufferTimeout(iterationIDtoSourceName.get(iterationID), bufferTimeout.get(iterationTail));
 	}
 
 	/**
@@ -582,7 +570,7 @@ public class JobGraphBuilder {
 		AbstractJobVertex maxParallelismVertex = components.get(maxParallelismVertexName);
 
 		for (String componentName : components.keySet()) {
-			if (componentName != maxParallelismVertexName) {
+			if (!componentName.equals(maxParallelismVertexName)) {
 				components.get(componentName).setVertexToShareInstancesWith(maxParallelismVertex);
 			}
 		}
@@ -623,7 +611,7 @@ public class JobGraphBuilder {
 		for (String upStreamComponentName : outEdgeList.keySet()) {
 			int i = 0;
 
-			ArrayList<Integer> outEdgeTypeList = outEdgeType.get(upStreamComponentName);
+			List<Integer> outEdgeTypeList = outEdgeType.get(upStreamComponentName);
 
 			for (String downStreamComponentName : outEdgeList.get(upStreamComponentName)) {
 				StreamConfig downStreamComponentConfig = new StreamConfig(components.get(

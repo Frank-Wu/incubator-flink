@@ -40,7 +40,6 @@ public class StreamConfig {
 	private static final String NUMBER_OF_INPUTS = "numberOfInputs";
 	private static final String OUTPUT_NAME = "outputName_";
 	private static final String PARTITIONER_OBJECT = "partitionerObject_";
-	private static final String USER_DEFINED_NAME = "userDefinedName";
 	private static final String NUMBER_OF_OUTPUT_CHANNELS = "numOfOutputs_";
 	private static final String ITERATION_ID = "iteration-id";
 	private static final String OUTPUT_SELECTOR = "outputSelector";
@@ -61,6 +60,7 @@ public class StreamConfig {
 	// STRINGS
 
 	private static final String MUTABILITY = "isMutable";
+	private static final String ITERATON_WAIT = "iterationWait";
 
 	private Configuration config;
 
@@ -74,8 +74,7 @@ public class StreamConfig {
 
 	// CONFIGS
 
-	public void setTypeWrapper(
-			TypeSerializerWrapper<?, ?, ?> typeWrapper) {
+	public void setTypeWrapper(TypeSerializerWrapper<?, ?, ?> typeWrapper) {
 		config.setBytes("typeWrapper", SerializationUtils.serialize(typeWrapper));
 	}
 
@@ -130,9 +129,8 @@ public class StreamConfig {
 		try {
 			return deserializeObject(config.getBytes(SERIALIZEDUDF, null));
 		} catch (Exception e) {
-			new StreamComponentException("Cannot instantiate user function");
+			throw new StreamComponentException("Cannot instantiate user function");
 		}
-		return null;
 	}
 
 	public void setComponentName(String componentName) {
@@ -164,12 +162,6 @@ public class StreamConfig {
 
 	public String getFunctionName() {
 		return config.getString(FUNCTION_NAME, "");
-	}
-
-	public void setUserDefinedName(List<String> userDefinedName) {
-		if (!userDefinedName.isEmpty()) {
-			config.setBytes(USER_DEFINED_NAME, SerializationUtils.serialize((Serializable) userDefinedName));
-		}
 	}
 
 	public void setDirectedEmit(boolean directedEmit) {
@@ -204,6 +196,14 @@ public class StreamConfig {
 		return config.getString(ITERATION_ID, "iteration-0");
 	}
 
+	public void setIterationWaitTime(long time) {
+		config.setLong(ITERATON_WAIT, time);
+	}
+
+	public long getIterationWaitTime() {
+		return config.getLong(ITERATON_WAIT, 0);
+	}
+
 	public void setNumberOfOutputChannels(int outputIndex, Integer numberOfOutputChannels) {
 		config.setInteger(NUMBER_OF_OUTPUT_CHANNELS + outputIndex, numberOfOutputChannels);
 	}
@@ -212,28 +212,29 @@ public class StreamConfig {
 		return config.getInteger(NUMBER_OF_OUTPUT_CHANNELS + outputIndex, 0);
 	}
 
-	public <T> void setPartitioner(int outputIndex,
-			StreamPartitioner<T> partitionerObject) {
+	public <T> void setPartitioner(int outputIndex, StreamPartitioner<T> partitionerObject) {
 
 		config.setBytes(PARTITIONER_OBJECT + outputIndex,
 				SerializationUtils.serialize(partitionerObject));
 	}
 
-	public <T> StreamPartitioner<T> getPartitioner(int outputIndex)
-			throws ClassNotFoundException, IOException {
+	public <T> StreamPartitioner<T> getPartitioner(int outputIndex) throws ClassNotFoundException,
+			IOException {
 		return deserializeObject(config.getBytes(PARTITIONER_OBJECT + outputIndex,
 				SerializationUtils.serialize(new ShufflePartitioner<T>())));
 	}
 
 	public void setOutputName(int outputIndex, List<String> outputName) {
 		if (outputName != null) {
-			config.setBytes(OUTPUT_NAME + outputIndex, SerializationUtils.serialize((Serializable) outputName));
+			config.setBytes(OUTPUT_NAME + outputIndex,
+					SerializationUtils.serialize((Serializable) outputName));
 		}
 	}
 
 	@SuppressWarnings("unchecked")
 	public List<String> getOutputName(int outputIndex) {
-		return (List<String>) SerializationUtils.deserialize(config.getBytes(OUTPUT_NAME + outputIndex, null));
+		return (List<String>) SerializationUtils.deserialize(config.getBytes(OUTPUT_NAME
+				+ outputIndex, null));
 	}
 
 	public void setNumberOfInputs(int numberOfInputs) {
@@ -274,4 +275,5 @@ public class StreamConfig {
 			ClassNotFoundException {
 		return (T) SerializationUtils.deserialize(serializedObject);
 	}
+
 }

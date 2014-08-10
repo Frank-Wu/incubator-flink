@@ -60,6 +60,8 @@ public abstract class StreamExecutionEnvironment {
 
 	private int executionParallelism = -1;
 
+	private long buffertimeout = 0;;
+
 	protected JobGraphBuilder jobGraphBuilder;
 
 	// --------------------------------------------------------------------------------------------
@@ -107,6 +109,21 @@ public abstract class StreamExecutionEnvironment {
 			throw new IllegalArgumentException("Degree of parallelism must be at least one.");
 		}
 		this.degreeOfParallelism = degreeOfParallelism;
+	}
+
+	/**
+	 * Sets the maximum time frequency (ms) for the flushing of the output
+	 * buffers. By default the output buffers flush only when they are full.
+	 * 
+	 * @param timeoutMillis
+	 *            The maximum time between two output flushes.
+	 */
+	public void setBufferTimeout(long timeoutMillis) {
+		this.buffertimeout = timeoutMillis;
+	}
+
+	public long getBufferTimeout() {
+		return this.buffertimeout;
 	}
 
 	/**
@@ -177,9 +194,9 @@ public abstract class StreamExecutionEnvironment {
 	 *            type of the returned stream
 	 * @return The DataStream representing the elements.
 	 */
+	@SuppressWarnings("unchecked")
 	public <OUT extends Serializable> DataStreamSource<OUT> fromElements(OUT... data) {
-		DataStreamSource<OUT> returnStream = new DataStreamSource<OUT>(
-				this, "elements");
+		DataStreamSource<OUT> returnStream = new DataStreamSource<OUT>(this, "elements");
 
 		try {
 			SourceFunction<OUT> function = new FromElementsFunction<OUT>(data);
@@ -204,7 +221,6 @@ public abstract class StreamExecutionEnvironment {
 	 *            type of the returned stream
 	 * @return The DataStream representing the elements.
 	 */
-	@SuppressWarnings("unchecked")
 	public <OUT extends Serializable> DataStreamSource<OUT> fromCollection(Collection<OUT> data) {
 		DataStreamSource<OUT> returnStream = new DataStreamSource<OUT>(this, "elements");
 
@@ -217,7 +233,7 @@ public abstract class StreamExecutionEnvironment {
 
 			jobGraphBuilder.addSource(returnStream.getId(), new SourceInvokable<OUT>(
 					new FromElementsFunction<OUT>(data)), new ObjectTypeWrapper<OUT, Tuple, OUT>(
-					(OUT) data.toArray()[0], null, (OUT) data.toArray()[0]), "source",
+					data.iterator().next(), null, data.iterator().next()), "source",
 					SerializationUtils.serialize(function), 1);
 		} catch (SerializationException e) {
 			throw new RuntimeException("Cannot serialize collection");

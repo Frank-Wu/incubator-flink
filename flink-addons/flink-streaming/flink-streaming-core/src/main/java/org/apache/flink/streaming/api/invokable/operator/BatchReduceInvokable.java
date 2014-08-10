@@ -19,106 +19,56 @@
 
 package org.apache.flink.streaming.api.invokable.operator;
 
-import java.util.ArrayList;
-import java.util.List;
-
+import org.apache.commons.math.util.MathUtils;
 import org.apache.flink.api.common.functions.GroupReduceFunction;
+import org.apache.flink.api.common.functions.ReduceFunction;
+import org.apache.flink.configuration.Configuration;
+import org.apache.flink.streaming.state.SlidingWindowState;
 
 public class BatchReduceInvokable<IN, OUT> extends StreamReduceInvokable<IN, OUT> {
 	private static final long serialVersionUID = 1L;
-	private int batchSize;
+	private long batchSize;
+	int counter = 0;
 
-	public BatchReduceInvokable(GroupReduceFunction<IN, OUT> reduceFunction, int batchSize) {
+	public BatchReduceInvokable(GroupReduceFunction<IN, OUT> reduceFunction, long batchSize,
+			long slideSize) {
+		super(reduceFunction);
 		this.reducer = reduceFunction;
 		this.batchSize = batchSize;
+		this.slideSize = slideSize;
+		this.granularity = MathUtils.gcd(batchSize, slideSize);
+		this.listSize = (int) granularity;
 	}
-
-	@Override
-	protected void immutableInvoke() throws Exception {
-		List<IN> tupleBatch = new ArrayList<IN>();
-		boolean batchStart;
-		int counter = 0;
-
-		while (loadNextRecord() != null) {
-			batchStart = true;
-			do {
-				if (batchStart) {
-					batchStart = false;
-				} else {
-					reuse = loadNextRecord();
-					if (reuse == null) {
-						break;
-					}
-				}
-				counter++;
-				tupleBatch.add(reuse.getObject());
-				resetReuse();
-			} while (counter < batchSize);
-			reducer.reduce(tupleBatch, collector);
-			tupleBatch.clear();
-			counter = 0;
-		}
-
+	
+	protected BatchReduceInvokable(ReduceFunction<IN> reduceFunction, long batchSize,
+			long slideSize) {
+		super(reduceFunction);
+		this.batchSize = batchSize;
+		this.slideSize = slideSize;
+		this.granularity = MathUtils.gcd(batchSize, slideSize);
+		this.listSize = (int) granularity;
 	}
 
 	@Override
 	protected void mutableInvoke() throws Exception {
-		userIterator = new CounterIterator();
-
-		do {
-			if (userIterator.hasNext()) {
-				reducer.reduce(userIterable, collector);
-				userIterator.reset();
-			}
-		} while (reuse != null);
+		throw new RuntimeException("Reducing mutable sliding batch is not supported.");
 	}
 
-	private class CounterIterator implements BatchIterator<IN> {
-		private int counter;
-		private boolean loadedNext;
+	@Override
+	public void open(Configuration parameters) throws Exception {
+		super.open(parameters);
+		this.state = new SlidingWindowState<IN>(batchSize, slideSize, granularity);
+	}
 
-		public CounterIterator() {
-			counter = 1;
+	@Override
+	protected boolean batchNotFull() {
+		counter++;
+		if (counter < granularity) {
+			return true;
+		} else {
+			counter = 0;
+			return false;
 		}
-
-		@Override
-		public boolean hasNext() {
-			if (counter > batchSize) {
-				return false;
-			} else if (!loadedNext) {
-				loadNextRecord();
-				loadedNext = true;
-			}
-			return (reuse != null);
-		}
-
-		@Override
-		public IN next() {
-			if (hasNext()) {
-				counter++;
-				loadedNext = false;
-				return reuse.getObject();
-			} else {
-				counter++;
-				loadedNext = false;
-				return null;
-			}
-		}
-
-		public void reset() {
-			for (int i = 0; i < (batchSize - counter); i++) {
-				loadNextRecord();
-			}
-			loadNextRecord();
-			loadedNext = true;
-			counter = 1;
-		}
-
-		@Override
-		public void remove() {
-
-		}
-
 	}
 
 }

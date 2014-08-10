@@ -19,105 +19,57 @@
 
 package org.apache.flink.streaming.api.invokable.operator;
 
-import java.util.ArrayList;
-import java.util.List;
-
+import org.apache.commons.math.util.MathUtils;
 import org.apache.flink.api.common.functions.GroupReduceFunction;
+import org.apache.flink.api.common.functions.ReduceFunction;
+import org.apache.flink.configuration.Configuration;
+import org.apache.flink.streaming.state.SlidingWindowState;
 
 public class WindowReduceInvokable<IN, OUT> extends StreamReduceInvokable<IN, OUT> {
 	private static final long serialVersionUID = 1L;
 	private long windowSize;
 	volatile boolean isRunning;
-	boolean window;
+	private long startTime;
 
-	public WindowReduceInvokable(GroupReduceFunction<IN, OUT> reduceFunction, long windowSize) {
+	public WindowReduceInvokable(GroupReduceFunction<IN, OUT> reduceFunction, long windowSize,
+			long slideInterval) {
+		super(reduceFunction);
 		this.reducer = reduceFunction;
 		this.windowSize = windowSize;
-		this.window = true;
+		this.slideSize = slideInterval;
+		this.granularity = MathUtils.gcd(windowSize, slideSize);
+		this.listSize = (int) granularity;
+	}
+	
+	public WindowReduceInvokable(ReduceFunction<IN> reduceFunction, long windowSize,
+			long slideInterval) {
+		super(reduceFunction);
+		this.windowSize = windowSize;
+		this.slideSize = slideInterval;
+		this.granularity = MathUtils.gcd(windowSize, slideSize);
+		this.listSize = (int) granularity;
 	}
 
-	protected void immutableInvoke() throws Exception {
-		List<IN> tupleBatch = new ArrayList<IN>();
-		boolean batchStart;
-
-		long startTime = System.currentTimeMillis();
-		while (loadNextRecord() != null) {
-			batchStart = true;
-			do {
-				if (batchStart) {
-					batchStart = false;
-				} else {
-					reuse = loadNextRecord();
-					if (reuse == null) {
-						break;
-					}
-				}
-				tupleBatch.add(reuse.getObject());
-				resetReuse();
-			} while (System.currentTimeMillis() - startTime < windowSize);
-			reducer.reduce(tupleBatch, collector);
-			tupleBatch.clear();
-			startTime = System.currentTimeMillis();
+	@Override
+	protected boolean batchNotFull() {
+		long time = System.currentTimeMillis();
+		if (time - startTime < granularity) {
+			return true;
+		} else {
+			startTime = time;
+			return false;
 		}
+	}
 
+	@Override
+	public void open(Configuration parameters) throws Exception {
+		super.open(parameters);
+		startTime = System.currentTimeMillis();
+		this.state = new SlidingWindowState<IN>(windowSize, slideSize, granularity);
 	}
 
 	protected void mutableInvoke() throws Exception {
-		userIterator = new WindowIterator();
-
-		do {
-			if (userIterator.hasNext()) {
-				reducer.reduce(userIterable, collector);
-				userIterator.reset();
-			}
-		} while (reuse != null);
-	}
-
-	private class WindowIterator implements BatchIterator<IN> {
-
-		private boolean loadedNext;
-		private long startTime;
-
-		public WindowIterator() {
-			startTime = System.currentTimeMillis();
-		}
-
-		@Override
-		public boolean hasNext() {
-			if (System.currentTimeMillis() - startTime > windowSize) {
-				return false;
-			} else if (!loadedNext) {
-				loadNextRecord();
-				loadedNext = true;
-			}
-			return (reuse != null);
-		}
-
-		@Override
-		public IN next() {
-			if (hasNext()) {
-				loadedNext = false;
-				return reuse.getObject();
-			} else {
-				loadedNext = false;
-				return reuse.getObject();
-			}
-		}
-
-		public void reset() {
-			while (System.currentTimeMillis() - startTime < windowSize) {
-				loadNextRecord();
-			}
-			loadNextRecord();
-			loadedNext = true;
-			startTime = System.currentTimeMillis();
-		}
-
-		@Override
-		public void remove() {
-
-		}
-
+		throw new RuntimeException("Reducing mutable sliding window is not supported.");
 	}
 
 }

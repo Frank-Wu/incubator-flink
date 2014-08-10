@@ -17,35 +17,22 @@
  *
  */
 
-package org.apache.flink.streaming.api.function.source;
+package org.apache.flink.streaming.util;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
-import org.apache.flink.util.Collector;
+import org.apache.flink.streaming.api.function.source.SourceFunction;
 
-public class FileStreamFunction implements SourceFunction<String> {
-	private static final long serialVersionUID = 1L;
+public class MockSource<T> {
 
-	private final String path;
-
-	public FileStreamFunction(String path) {
-		this.path = path;
-	}
-
-	@Override
-	public void invoke(Collector<String> collector) throws IOException {
-		while (true) {
-			BufferedReader br = new BufferedReader(new FileReader(path));
-			String line = br.readLine();
-			while (line != null) {
-				if (!line.equals("")) {
-					collector.collect(line);
-				}
-				line = br.readLine();
-			}
-			br.close();
+	public static <T> List<T> createAndExecute(SourceFunction<T> source) {
+		List<T> outputs = new ArrayList<T>();
+		try {
+			source.invoke(new MockCollector<T>(outputs));
+		} catch (Exception e) {
+			throw new RuntimeException("Cannot invoke source.", e);
 		}
+		return outputs;
 	}
 }

@@ -19,26 +19,28 @@
 
 package org.apache.flink.streaming.api.invokable.operator;
 
-import org.apache.flink.api.common.functions.FilterFunction;
+import org.apache.flink.api.common.functions.ReduceFunction;
 import org.apache.flink.streaming.api.invokable.UserTaskInvokable;
+import org.apache.flink.streaming.state.MutableTableState;
 
-public class FilterInvokable<IN> extends UserTaskInvokable<IN, IN> {
-
+public class GroupReduceInvokable<IN> extends UserTaskInvokable<IN, IN> {
 	private static final long serialVersionUID = 1L;
 
-	FilterFunction<IN> filterFunction;
+	private ReduceFunction<IN> reducer;
+	private int keyPosition;
+	private MutableTableState<Object, IN> values;
 
-	public FilterInvokable(FilterFunction<IN> filterFunction) {
-		super(filterFunction);
-		this.filterFunction = filterFunction;
+	public GroupReduceInvokable(ReduceFunction<IN> reducer, int keyPosition) {
+		super(reducer);
+		this.reducer = reducer;
+		this.keyPosition = keyPosition;
+		values = new MutableTableState<Object, IN>();
 	}
 
 	@Override
 	protected void immutableInvoke() throws Exception {
 		while ((reuse = recordIterator.next(reuse)) != null) {
-			if (filterFunction.filter(reuse.getObject())) {
-				collector.collect(reuse.getObject());
-			}
+			reduce();
 			resetReuse();
 		}
 	}
@@ -46,9 +48,21 @@ public class FilterInvokable<IN> extends UserTaskInvokable<IN, IN> {
 	@Override
 	protected void mutableInvoke() throws Exception {
 		while ((reuse = recordIterator.next(reuse)) != null) {
-			if (filterFunction.filter(reuse.getObject())) {
-				collector.collect(reuse.getObject());
-			}
+			reduce();
+		}
+	}
+
+	private void reduce() throws Exception {
+		Object key = reuse.getField(keyPosition);
+		IN currentValue = values.get(key);
+		IN nextValue = reuse.getObject();
+		if (currentValue != null) {
+			IN reduced = reducer.reduce(currentValue, nextValue);
+			values.put(key, reduced);
+			collector.collect(reduced);
+		} else {
+			values.put(key, nextValue);
+			collector.collect(nextValue);
 		}
 	}
 

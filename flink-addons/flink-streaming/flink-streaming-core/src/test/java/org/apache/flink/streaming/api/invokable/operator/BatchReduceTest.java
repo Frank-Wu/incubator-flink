@@ -22,78 +22,76 @@ package org.apache.flink.streaming.api.invokable.operator;
 import static org.junit.Assert.assertEquals;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 import org.apache.flink.api.common.functions.GroupReduceFunction;
-import org.apache.flink.api.java.tuple.Tuple1;
-import org.apache.flink.streaming.api.datastream.DataStream;
-import org.apache.flink.streaming.api.environment.LocalStreamEnvironment;
-import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.streaming.api.function.sink.SinkFunction;
-import org.apache.flink.streaming.api.function.source.SourceFunction;
-import org.apache.flink.streaming.util.LogUtils;
+import org.apache.flink.streaming.util.MockInvokable;
 import org.apache.flink.util.Collector;
-import org.apache.log4j.Level;
 import org.junit.Test;
+
 
 public class BatchReduceTest {
 
-	private static ArrayList<Double> avgs = new ArrayList<Double>();
-	private static final int BATCH_SIZE = 5;
-	private static final int PARALlELISM = 1;
-	private static final long MEMORYSIZE = 32;
-
-	public static final class MyBatchReduce implements
-			GroupReduceFunction<Tuple1<Double>, Tuple1<Double>> {
+	public static final class MySlidingBatchReduce implements GroupReduceFunction<Integer, String> {
 		private static final long serialVersionUID = 1L;
 
 		@Override
-		public void reduce(Iterable<Tuple1<Double>> values, Collector<Tuple1<Double>> out)
-				throws Exception {
+		public void reduce(Iterable<Integer> values, Collector<String> out) throws Exception {
+			for (Integer value : values) {
+				out.collect(value.toString());
+			}
+			out.collect(END_OF_BATCH);
+		}
+	}
+
+	private final static String END_OF_BATCH = "end of batch";
+	private final static int SLIDING_BATCH_SIZE = 3;
+	private final static int SLIDE_SIZE = 2;
+
+	@Test
+	public void slidingBatchReduceTest() {
+		BatchReduceInvokable<Integer, String> invokable = new BatchReduceInvokable<Integer, String>(
+				new MySlidingBatchReduce(), SLIDING_BATCH_SIZE, SLIDE_SIZE);
+
+		List<String> expected = Arrays.asList("1", "2", "3", END_OF_BATCH, "3", "4", "5",
+				END_OF_BATCH, "5", "6", "7", END_OF_BATCH);
+		List<String> actual = MockInvokable.createAndExecute(invokable,
+				Arrays.asList(1, 2, 3, 4, 5, 6, 7));
+
+		assertEquals(expected, actual);
+	}
+
+	public static final class MyBatchReduce implements GroupReduceFunction<Double, Double> {
+		private static final long serialVersionUID = 1L;
+
+		@Override
+		public void reduce(Iterable<Double> values, Collector<Double> out) throws Exception {
 
 			Double sum = 0.;
 			Double count = 0.;
-			for (Tuple1<Double> value : values) {
-				sum += value.f0;
+			for (Double value : values) {
+				sum += value;
 				count++;
 			}
 			if (count > 0) {
-				out.collect(new Tuple1<Double>(sum / count));
+				out.collect(new Double(sum / count));
 			}
 		}
 	}
-
-	public static final class MySink implements SinkFunction<Tuple1<Double>> {
-		private static final long serialVersionUID = 1L;
-
-		@Override
-		public void invoke(Tuple1<Double> tuple) {
-			avgs.add(tuple.f0);
-		}
-
-	}
-
-	public static final class MySource implements SourceFunction<Tuple1<Double>> {
-		private static final long serialVersionUID = 1L;
-
-		@Override
-		public void invoke(Collector<Tuple1<Double>> collector) {
-			for (Double i = 1.; i <= 100; i++) {
-				collector.collect(new Tuple1<Double>(i));
-			}
-		}
-	}
+	
+	private static final int BATCH_SIZE = 5;
 
 	@Test
-	public void test() throws Exception {
-		LogUtils.initializeDefaultConsoleLogger(Level.OFF, Level.OFF);
-
-		LocalStreamEnvironment env = StreamExecutionEnvironment.createLocalEnvironment(PARALlELISM);
-
-		@SuppressWarnings("unused")
-		DataStream<Tuple1<Double>> dataStream = env.addSource(new MySource())
-				.batchReduce(new MyBatchReduce(), BATCH_SIZE).addSink(new MySink());
-
-		env.executeTest(MEMORYSIZE);
+	public void nonSlidingBatchReduceTest() {
+		List<Double> inputs = new ArrayList<Double>();
+		for (Double i = 1.; i <= 100; i++) {
+			inputs.add(i);
+		}
+		
+		BatchReduceInvokable<Double, Double> invokable = new BatchReduceInvokable<Double, Double>(new MyBatchReduce(), BATCH_SIZE, BATCH_SIZE);
+		
+		List<Double> avgs = MockInvokable.createAndExecute(invokable, inputs);
 
 		for (int i = 0; i < avgs.size(); i++) {
 			assertEquals(3.0 + i * BATCH_SIZE, avgs.get(i), 0);

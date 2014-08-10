@@ -64,6 +64,7 @@ public abstract class AbstractStreamComponent<OUT> extends AbstractInvokable {
 	protected boolean isMutable;
 	protected Object function;
 	protected String functionName;
+	protected long bufferTimeout;
 
 	protected static int newComponent() {
 		numComponents++;
@@ -107,6 +108,7 @@ public abstract class AbstractStreamComponent<OUT> extends AbstractInvokable {
 		outTypeInfo = typeWrapper.getOutputTypeInfo();
 		outSerializer = new StreamRecordSerializer<OUT>(outTypeInfo);
 		outSerializationDelegate = new SerializationDelegate<StreamRecord<OUT>>(outSerializer);
+		outSerializationDelegate.setInstance(outSerializer.createInstance());
 	}
 
 	protected void setConfigOutputs(
@@ -115,6 +117,7 @@ public abstract class AbstractStreamComponent<OUT> extends AbstractInvokable {
 		setCollector();
 
 		int numberOfOutputs = configuration.getNumberOfOutputs();
+		bufferTimeout = configuration.getBufferTimeout();
 
 		for (int i = 0; i < numberOfOutputs; i++) {
 			setPartitioner(i, outputs);
@@ -128,33 +131,31 @@ public abstract class AbstractStreamComponent<OUT> extends AbstractInvokable {
 		try {
 			outputPartitioner = configuration.getPartitioner(outputNumber);
 
-			RecordWriter<SerializationDelegate<StreamRecord<OUT>>> output;
-
-			long bufferTimeout = configuration.getBufferTimeout();
-
-			if (bufferTimeout > 0) {
-				output = new StreamRecordWriter<SerializationDelegate<StreamRecord<OUT>>>(this,
-						outputPartitioner, bufferTimeout);
-			} else {
-				output = new RecordWriter<SerializationDelegate<StreamRecord<OUT>>>(this,
-						outputPartitioner);
-			}
-
-			outputs.add(output);
-			List<String> outputName = configuration.getOutputName(outputNumber);
-
-			if (collector != null) {
-				collector.addOutput(output, outputName);
-			}
-
-			if (LOG.isTraceEnabled()) {
-				LOG.trace("Partitioner set: " + outputPartitioner.getClass().getSimpleName()
-						+ " with " + outputNumber + " outputs");
-			}
 		} catch (Exception e) {
-			throw new StreamComponentException("Cannot deserialize partitioner "
-					+ outputPartitioner.getClass().getSimpleName() + " of " + name + " with "
-					+ outputNumber + " outputs", e);
+			throw new StreamComponentException("Cannot deserialize partitioner for " + name
+					+ " with " + outputNumber + " outputs", e);
+		}
+
+		RecordWriter<SerializationDelegate<StreamRecord<OUT>>> output;
+
+		if (bufferTimeout > 0) {
+			output = new StreamRecordWriter<SerializationDelegate<StreamRecord<OUT>>>(this,
+					outputPartitioner, bufferTimeout);
+		} else {
+			output = new RecordWriter<SerializationDelegate<StreamRecord<OUT>>>(this,
+					outputPartitioner);
+		}
+
+		outputs.add(output);
+		List<String> outputName = configuration.getOutputName(outputNumber);
+
+		if (collector != null) {
+			collector.addOutput(output, outputName);
+		}
+
+		if (LOG.isTraceEnabled()) {
+			LOG.trace("Partitioner set: " + outputPartitioner.getClass().getSimpleName() + " with "
+					+ outputNumber + " outputs");
 		}
 	}
 

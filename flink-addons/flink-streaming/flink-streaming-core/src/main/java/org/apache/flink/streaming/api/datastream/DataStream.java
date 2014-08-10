@@ -36,7 +36,6 @@ import org.apache.flink.api.java.functions.RichGroupReduceFunction;
 import org.apache.flink.api.java.functions.RichMapFunction;
 import org.apache.flink.api.java.tuple.Tuple;
 import org.apache.flink.streaming.api.JobGraphBuilder;
-import org.apache.flink.streaming.api.collector.OutputSelector;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.function.sink.PrintSinkFunction;
 import org.apache.flink.streaming.api.function.sink.SinkFunction;
@@ -80,7 +79,7 @@ public abstract class DataStream<OUT> {
 	protected final StreamExecutionEnvironment environment;
 	protected final String id;
 	protected int degreeOfParallelism;
-	protected String userDefinedName;
+	protected List<String> userDefinedNames;
 	protected StreamPartitioner<OUT> partitioner;
 
 	protected final JobGraphBuilder jobGraphBuilder;
@@ -105,6 +104,7 @@ public abstract class DataStream<OUT> {
 		this.environment = environment;
 		this.degreeOfParallelism = environment.getDegreeOfParallelism();
 		this.jobGraphBuilder = environment.getJobGraphBuilder();
+		this.userDefinedNames = new ArrayList<String>();
 		this.partitioner = new ForwardPartitioner<OUT>();
 
 	}
@@ -119,7 +119,7 @@ public abstract class DataStream<OUT> {
 		this.environment = dataStream.environment;
 		this.id = dataStream.id;
 		this.degreeOfParallelism = dataStream.degreeOfParallelism;
-		this.userDefinedName = dataStream.userDefinedName;
+		this.userDefinedNames = new ArrayList<String>(dataStream.userDefinedNames);
 		this.partitioner = dataStream.partitioner;
 		this.jobGraphBuilder = dataStream.jobGraphBuilder;
 
@@ -151,16 +151,17 @@ public abstract class DataStream<OUT> {
 	}
 
 	/**
-	 * Creates a new by connecting {@link DataStream} outputs of the same type
-	 * with each other. The DataStreams connected using this operator will be
-	 * transformed simultaneously.
+	 * Creates a new {@link MergedDataStream} by merging {@link DataStream}
+	 * outputs of the same type with each other. The DataStreams merged using
+	 * this operator will be transformed simultaneously.
 	 * 
 	 * @param streams
-	 *            The DataStreams to connect output with.
-	 * @return The {@link ConnectedDataStream}.
+	 *            The DataStreams to merge output with.
+	 * @return The {@link MergedDataStream}.
 	 */
-	public ConnectedDataStream<OUT> connectWith(DataStream<OUT>... streams) {
-		ConnectedDataStream<OUT> returnStream = new ConnectedDataStream<OUT>(this);
+	@SuppressWarnings("unchecked")
+	public MergedDataStream<OUT> merge(DataStream<OUT>... streams) {
+		MergedDataStream<OUT> returnStream = new MergedDataStream<OUT>(this);
 
 		for (DataStream<OUT> stream : streams) {
 			returnStream.addConnection(stream);
@@ -169,32 +170,32 @@ public abstract class DataStream<OUT> {
 	}
 
 	/**
-	 * Creates a new {@link CoDataStream} bye connecting {@link DataStream}
-	 * outputs of different type with each other. The DataStreams connected
-	 * using this operators can be used with CoFunctions.
+	 * Creates a new {@link ConnectedDataStream} by connecting
+	 * {@link DataStream} outputs of different type with each other. The
+	 * DataStreams connected using this operators can be used with CoFunctions.
 	 * 
 	 * @param dataStream
 	 *            The DataStream with which this stream will be joined.
-	 * @return The {@link CoDataStream}.
+	 * @return The {@link ConnectedDataStream}.
 	 */
-	public <R> CoDataStream<OUT, R> co(DataStream<R> dataStream) {
-		return new CoDataStream<OUT, R>(environment, jobGraphBuilder, this, dataStream);
+	public <R> ConnectedDataStream<OUT, R> connect(DataStream<R> dataStream) {
+		return new ConnectedDataStream<OUT, R>(environment, jobGraphBuilder, this, dataStream);
 	}
 
 	/**
 	 * Sets the partitioning of the {@link DataStream} so that the output tuples
 	 * are partitioned by their hashcode and are sent to only one component.
 	 * 
-	 * @param keyposition
+	 * @param keyPosition
 	 *            The field used to compute the hashcode.
 	 * @return The DataStream with field partitioning set.
 	 */
-	public DataStream<OUT> partitionBy(int keyposition) {
-		if (keyposition < 0) {
+	public DataStream<OUT> partitionBy(int keyPosition) {
+		if (keyPosition < 0) {
 			throw new IllegalArgumentException("The position of the field must be non-negative");
 		}
 
-		return setConnectionType(new FieldsPartitioner<OUT>(keyposition));
+		return setConnectionType(new FieldsPartitioner<OUT>(keyPosition));
 	}
 
 	/**
@@ -279,6 +280,10 @@ public abstract class DataStream<OUT> {
 				flatMapper));
 	}
 
+	public GroupedDataStream<OUT> groupBy(int keyPosition) {
+		return new GroupedDataStream<OUT>(this.partitionBy(keyPosition), keyPosition);
+	}
+
 	/**
 	 * Applies a reduce transformation on preset chunks of the DataStream. The
 	 * transformation calls a {@link GroupReduceFunction} for each tuple batch
@@ -297,16 +302,41 @@ public abstract class DataStream<OUT> {
 	 * @return The transformed {@link DataStream}.
 	 */
 	public <R> SingleOutputStreamOperator<R, ?> batchReduce(GroupReduceFunction<OUT, R> reducer,
-			int batchSize) {
+			long batchSize) {
+		return batchReduce(reducer, batchSize, batchSize);
+	}
+
+	/**
+	 * Applies a reduce transformation on preset sliding chunks of the
+	 * DataStream. The transformation calls a {@link GroupReduceFunction} for
+	 * each tuple batch of the predefined size. The tuple batch gets slid by the
+	 * given number of tuples. Each GroupReduceFunction call can return any
+	 * number of elements including none. The user can also extend
+	 * {@link RichGroupReduceFunction} to gain access to other features provided
+	 * by the {@link RichFuntion} interface.
+	 * 
+	 * 
+	 * @param reducer
+	 *            The GroupReduceFunction that is called for each tuple batch.
+	 * @param batchSize
+	 *            The number of tuples grouped together in the batch.
+	 * @param slideSize
+	 *            The number of tuples the batch is slid by.
+	 * @param <R>
+	 *            output type
+	 * @return The transformed {@link DataStream}.
+	 */
+	public <R> SingleOutputStreamOperator<R, ?> batchReduce(GroupReduceFunction<OUT, R> reducer,
+			long batchSize, long slideSize) {
 		return addFunction("batchReduce", reducer, new FunctionTypeWrapper<OUT, Tuple, R>(reducer,
 				GroupReduceFunction.class, 0, -1, 1), new BatchReduceInvokable<OUT, R>(reducer,
-				batchSize));
+				batchSize, slideSize));
 	}
 
 	/**
 	 * Applies a reduce transformation on preset "time" chunks of the
 	 * DataStream. The transformation calls a {@link GroupReduceFunction} on
-	 * records received during the predefined time window. The window shifted
+	 * records received during the predefined time window. The window is shifted
 	 * after each reduce call. Each GroupReduceFunction call can return any
 	 * number of elements including none.The user can also extend
 	 * {@link RichGroupReduceFunction} to gain access to other features provided
@@ -316,16 +346,43 @@ public abstract class DataStream<OUT> {
 	 * @param reducer
 	 *            The GroupReduceFunction that is called for each time window.
 	 * @param windowSize
-	 *            The time window to run the reducer on, in milliseconds.
+	 *            SingleOutputStreamOperator The time window to run the reducer
+	 *            on, in milliseconds.
 	 * @param <R>
 	 *            output type
 	 * @return The transformed DataStream.
 	 */
 	public <R> SingleOutputStreamOperator<R, ?> windowReduce(GroupReduceFunction<OUT, R> reducer,
 			long windowSize) {
+		return windowReduce(reducer, windowSize, windowSize);
+	}
+
+	/**
+	 * Applies a reduce transformation on preset "time" chunks of the
+	 * DataStream. The transformation calls a {@link GroupReduceFunction} on
+	 * records received during the predefined time window. The window is shifted
+	 * after each reduce call. Each GroupReduceFunction call can return any
+	 * number of elements including none.The user can also extend
+	 * {@link RichGroupReduceFunction} to gain access to other features provided
+	 * by the {@link RichFuntion} interface.
+	 * 
+	 * 
+	 * @param reducer
+	 *            The GroupReduceFunction that is called for each time window.
+	 * @param windowSize
+	 *            SingleOutputStreamOperator The time window to run the reducer
+	 *            on, in milliseconds.
+	 * @param slideInterval
+	 *            The time interval, batch is slid by.
+	 * @param <R>
+	 *            output type
+	 * @return The transformed DataStream.
+	 */
+	public <R> SingleOutputStreamOperator<R, ?> windowReduce(GroupReduceFunction<OUT, R> reducer,
+			long windowSize, long slideInterval) {
 		return addFunction("batchReduce", reducer, new FunctionTypeWrapper<OUT, Tuple, R>(reducer,
 				GroupReduceFunction.class, 0, -1, 1), new WindowReduceInvokable<OUT, R>(reducer,
-				windowSize));
+				windowSize, slideInterval));
 	}
 
 	/**
@@ -353,10 +410,10 @@ public abstract class DataStream<OUT> {
 	 * 
 	 * @return The closed DataStream.
 	 */
-	public DataStream<OUT> print() {
+	public DataStreamSink<OUT> print() {
 		DataStream<OUT> inputStream = this.copy();
 		PrintSinkFunction<OUT> printFunction = new PrintSinkFunction<OUT>();
-		DataStream<OUT> returnStream = addSink(inputStream, printFunction, null);
+		DataStreamSink<OUT> returnStream = addSink(inputStream, printFunction, null);
 
 		jobGraphBuilder.setBytesFrom(inputStream.getId(), returnStream.getId());
 
@@ -373,7 +430,7 @@ public abstract class DataStream<OUT> {
 	 * 
 	 * @return The closed DataStream
 	 */
-	public DataStream<OUT> writeAsText(String path) {
+	public DataStreamSink<OUT> writeAsText(String path) {
 		return writeAsText(this, path, new WriteFormatAsText<OUT>(), 1, null);
 	}
 
@@ -390,7 +447,7 @@ public abstract class DataStream<OUT> {
 	 * 
 	 * @return The closed DataStream
 	 */
-	public DataStream<OUT> writeAsText(String path, long millis) {
+	public DataStreamSink<OUT> writeAsText(String path, long millis) {
 		return writeAsText(this, path, new WriteFormatAsText<OUT>(), millis, null);
 	}
 
@@ -408,7 +465,7 @@ public abstract class DataStream<OUT> {
 	 * 
 	 * @return The closed DataStream
 	 */
-	public DataStream<OUT> writeAsText(String path, int batchSize) {
+	public DataStreamSink<OUT> writeAsText(String path, int batchSize) {
 		return writeAsText(this, path, new WriteFormatAsText<OUT>(), batchSize, null);
 	}
 
@@ -430,7 +487,7 @@ public abstract class DataStream<OUT> {
 	 * 
 	 * @return The closed DataStream
 	 */
-	public DataStream<OUT> writeAsText(String path, long millis, OUT endTuple) {
+	public DataStreamSink<OUT> writeAsText(String path, long millis, OUT endTuple) {
 		return writeAsText(this, path, new WriteFormatAsText<OUT>(), millis, endTuple);
 	}
 
@@ -453,7 +510,7 @@ public abstract class DataStream<OUT> {
 	 * 
 	 * @return The closed DataStream
 	 */
-	public DataStream<OUT> writeAsText(String path, int batchSize, OUT endTuple) {
+	public DataStreamSink<OUT> writeAsText(String path, int batchSize, OUT endTuple) {
 		return writeAsText(this, path, new WriteFormatAsText<OUT>(), batchSize, endTuple);
 	}
 
@@ -475,9 +532,9 @@ public abstract class DataStream<OUT> {
 	 * 
 	 * @return the data stream constructed
 	 */
-	private DataStream<OUT> writeAsText(DataStream<OUT> inputStream, String path,
+	private DataStreamSink<OUT> writeAsText(DataStream<OUT> inputStream, String path,
 			WriteFormatAsText<OUT> format, long millis, OUT endTuple) {
-		DataStream<OUT> returnStream = addSink(inputStream, new WriteSinkFunctionByMillis<OUT>(
+		DataStreamSink<OUT> returnStream = addSink(inputStream, new WriteSinkFunctionByMillis<OUT>(
 				path, format, millis, endTuple), null);
 		jobGraphBuilder.setBytesFrom(inputStream.getId(), returnStream.getId());
 		jobGraphBuilder.setMutability(returnStream.getId(), false);
@@ -503,10 +560,10 @@ public abstract class DataStream<OUT> {
 	 * 
 	 * @return the data stream constructed
 	 */
-	private DataStream<OUT> writeAsText(DataStream<OUT> inputStream, String path,
+	private DataStreamSink<OUT> writeAsText(DataStream<OUT> inputStream, String path,
 			WriteFormatAsText<OUT> format, int batchSize, OUT endTuple) {
-		DataStream<OUT> returnStream = addSink(inputStream, new WriteSinkFunctionByBatches<OUT>(
-				path, format, batchSize, endTuple), null);
+		DataStreamSink<OUT> returnStream = addSink(inputStream,
+				new WriteSinkFunctionByBatches<OUT>(path, format, batchSize, endTuple), null);
 		jobGraphBuilder.setBytesFrom(inputStream.getId(), returnStream.getId());
 		jobGraphBuilder.setMutability(returnStream.getId(), false);
 		return returnStream;
@@ -522,7 +579,7 @@ public abstract class DataStream<OUT> {
 	 * 
 	 * @return The closed DataStream
 	 */
-	public DataStream<OUT> writeAsCsv(String path) {
+	public DataStreamSink<OUT> writeAsCsv(String path) {
 		return writeAsCsv(this, path, new WriteFormatAsCsv<OUT>(), 1, null);
 	}
 
@@ -539,7 +596,7 @@ public abstract class DataStream<OUT> {
 	 * 
 	 * @return The closed DataStream
 	 */
-	public DataStream<OUT> writeAsCsv(String path, long millis) {
+	public DataStreamSink<OUT> writeAsCsv(String path, long millis) {
 		return writeAsCsv(this, path, new WriteFormatAsCsv<OUT>(), millis, null);
 	}
 
@@ -557,7 +614,7 @@ public abstract class DataStream<OUT> {
 	 * 
 	 * @return The closed DataStream
 	 */
-	public DataStream<OUT> writeAsCsv(String path, int batchSize) {
+	public DataStreamSink<OUT> writeAsCsv(String path, int batchSize) {
 		return writeAsCsv(this, path, new WriteFormatAsCsv<OUT>(), batchSize, null);
 	}
 
@@ -579,7 +636,7 @@ public abstract class DataStream<OUT> {
 	 * 
 	 * @return The closed DataStream
 	 */
-	public DataStream<OUT> writeAsCsv(String path, long millis, OUT endTuple) {
+	public DataStreamSink<OUT> writeAsCsv(String path, long millis, OUT endTuple) {
 		return writeAsCsv(this, path, new WriteFormatAsCsv<OUT>(), millis, endTuple);
 	}
 
@@ -602,7 +659,7 @@ public abstract class DataStream<OUT> {
 	 * 
 	 * @return The closed DataStream
 	 */
-	public DataStream<OUT> writeAsCsv(String path, int batchSize, OUT endTuple) {
+	public DataStreamSink<OUT> writeAsCsv(String path, int batchSize, OUT endTuple) {
 		if (this instanceof SingleOutputStreamOperator) {
 			((SingleOutputStreamOperator<?, ?>) this).setMutability(false);
 		}
@@ -627,9 +684,9 @@ public abstract class DataStream<OUT> {
 	 * 
 	 * @return the data stream constructed
 	 */
-	private DataStream<OUT> writeAsCsv(DataStream<OUT> inputStream, String path,
+	private DataStreamSink<OUT> writeAsCsv(DataStream<OUT> inputStream, String path,
 			WriteFormatAsCsv<OUT> format, long millis, OUT endTuple) {
-		DataStream<OUT> returnStream = addSink(inputStream, new WriteSinkFunctionByMillis<OUT>(
+		DataStreamSink<OUT> returnStream = addSink(inputStream, new WriteSinkFunctionByMillis<OUT>(
 				path, format, millis, endTuple));
 		jobGraphBuilder.setBytesFrom(inputStream.getId(), returnStream.getId());
 		jobGraphBuilder.setMutability(returnStream.getId(), false);
@@ -655,10 +712,10 @@ public abstract class DataStream<OUT> {
 	 * 
 	 * @return the data stream constructed
 	 */
-	private DataStream<OUT> writeAsCsv(DataStream<OUT> inputStream, String path,
+	private DataStreamSink<OUT> writeAsCsv(DataStream<OUT> inputStream, String path,
 			WriteFormatAsCsv<OUT> format, int batchSize, OUT endTuple) {
-		DataStream<OUT> returnStream = addSink(inputStream, new WriteSinkFunctionByBatches<OUT>(
-				path, format, batchSize, endTuple), null);
+		DataStreamSink<OUT> returnStream = addSink(inputStream,
+				new WriteSinkFunctionByBatches<OUT>(path, format, batchSize, endTuple), null);
 		jobGraphBuilder.setBytesFrom(inputStream.getId(), returnStream.getId());
 		jobGraphBuilder.setMutability(returnStream.getId(), false);
 		return returnStream;
@@ -676,9 +733,13 @@ public abstract class DataStream<OUT> {
 	 * To direct tuples to the iteration head or the output specifically one can
 	 * use the {@code split(OutputSelector)} on the iteration tail while
 	 * referencing the iteration head as 'iterate'.
-	 * 
+	 * <p>
 	 * The iteration edge will be partitioned the same way as the first input of
 	 * the iteration head.
+	 * <p>
+	 * By default a DataStream with iteration will never terminate, but the user
+	 * can use the {@link IterativeDataStream#setMaxWaitTime} call to set a max
+	 * waiting time for the iteration.
 	 * 
 	 * @return The iterative data stream created.
 	 */
@@ -686,12 +747,12 @@ public abstract class DataStream<OUT> {
 		return new IterativeDataStream<OUT>(this);
 	}
 
-	protected <R> DataStream<OUT> addIterationSource(String iterationID) {
+	protected <R> DataStream<OUT> addIterationSource(String iterationID, long waitTime) {
 
 		DataStream<R> returnStream = new DataStreamSource<R>(environment, "iterationSource");
 
 		jobGraphBuilder.addIterationSource(returnStream.getId(), this.getId(), iterationID,
-				degreeOfParallelism);
+				degreeOfParallelism, waitTime);
 
 		return this.copy();
 	}
@@ -710,7 +771,7 @@ public abstract class DataStream<OUT> {
 	 *            type of the return stream
 	 * @return the data stream constructed
 	 */
-	private <R> SingleOutputStreamOperator<R, ?> addFunction(String functionName,
+	protected <R> SingleOutputStreamOperator<R, ?> addFunction(String functionName,
 			final Function function, TypeSerializerWrapper<OUT, Tuple, R> typeWrapper,
 			UserTaskInvokable<OUT, R> functionInvokable) {
 
@@ -730,38 +791,12 @@ public abstract class DataStream<OUT> {
 		connectGraph(inputStream, returnStream.getId(), 0);
 
 		if (inputStream instanceof IterativeDataStream) {
-			returnStream.addIterationSource(((IterativeDataStream<OUT>) inputStream).iterationID
-					.toString());
-		}
-
-		if (userDefinedName != null) {
-			returnStream.name(getUserDefinedNames());
+			IterativeDataStream<OUT> iterativeStream = (IterativeDataStream<OUT>) inputStream;
+			returnStream.addIterationSource(iterativeStream.iterationID.toString(),
+					iterativeStream.waitTime);
 		}
 
 		return returnStream;
-	}
-
-	protected List<String> getUserDefinedNames() {
-		List<String> nameList = new ArrayList<String>();
-		nameList.add(userDefinedName);
-		return nameList;
-	}
-
-	/**
-	 * Gives the data transformation(vertex) a user defined name in order to use
-	 * with directed outputs. The {@link OutputSelector} of the input vertex
-	 * should use this name for directed emits.
-	 * 
-	 * @param name
-	 *            The name to set
-	 * @return The named DataStream.
-	 */
-	protected DataStream<OUT> name(List<String> name) {
-
-		userDefinedName = name.get(0);
-		jobGraphBuilder.setUserDefinedName(id, name);
-
-		return this;
 	}
 
 	/**
@@ -793,13 +828,14 @@ public abstract class DataStream<OUT> {
 	 *            Number of the type (used at co-functions)
 	 */
 	protected <X> void connectGraph(DataStream<X> inputStream, String outputID, int typeNumber) {
-		if (inputStream instanceof ConnectedDataStream) {
-			for (DataStream<X> stream : ((ConnectedDataStream<X>) inputStream).connectedStreams) {
-				jobGraphBuilder.setEdge(stream.getId(), outputID, stream.partitioner, typeNumber);
+		if (inputStream instanceof MergedDataStream) {
+			for (DataStream<X> stream : ((MergedDataStream<X>) inputStream).mergedStreams) {
+				jobGraphBuilder.setEdge(stream.getId(), outputID, stream.partitioner, typeNumber,
+						inputStream.userDefinedNames);
 			}
 		} else {
 			jobGraphBuilder.setEdge(inputStream.getId(), outputID, inputStream.partitioner,
-					typeNumber);
+					typeNumber, inputStream.userDefinedNames);
 		}
 
 	}
@@ -813,18 +849,18 @@ public abstract class DataStream<OUT> {
 	 *            The object containing the sink's invoke function.
 	 * @return The closed DataStream.
 	 */
-	public DataStream<OUT> addSink(SinkFunction<OUT> sinkFunction) {
+	public DataStreamSink<OUT> addSink(SinkFunction<OUT> sinkFunction) {
 		return addSink(this.copy(), sinkFunction);
 	}
 
-	private DataStream<OUT> addSink(DataStream<OUT> inputStream, SinkFunction<OUT> sinkFunction) {
+	private DataStreamSink<OUT> addSink(DataStream<OUT> inputStream, SinkFunction<OUT> sinkFunction) {
 		return addSink(inputStream, sinkFunction, new FunctionTypeWrapper<OUT, Tuple, OUT>(
 				sinkFunction, SinkFunction.class, 0, -1, 0));
 	}
 
-	private DataStream<OUT> addSink(DataStream<OUT> inputStream, SinkFunction<OUT> sinkFunction,
-			TypeSerializerWrapper<OUT, Tuple, OUT> typeWrapper) {
-		DataStream<OUT> returnStream = new DataStreamSink<OUT>(environment, "sink");
+	private DataStreamSink<OUT> addSink(DataStream<OUT> inputStream,
+			SinkFunction<OUT> sinkFunction, TypeSerializerWrapper<OUT, Tuple, OUT> typeWrapper) {
+		DataStreamSink<OUT> returnStream = new DataStreamSink<OUT>(environment, "sink");
 
 		try {
 			jobGraphBuilder.addSink(returnStream.getId(), new SinkInvokable<OUT>(sinkFunction),
@@ -834,11 +870,7 @@ public abstract class DataStream<OUT> {
 			throw new RuntimeException("Cannot serialize SinkFunction");
 		}
 
-		inputStream.connectGraph(inputStream, returnStream.getId(), 0);
-
-		if (this.copy().userDefinedName != null) {
-			returnStream.name(getUserDefinedNames());
-		}
+		inputStream.connectGraph(inputStream.copy(), returnStream.getId(), 0);
 
 		return returnStream;
 	}

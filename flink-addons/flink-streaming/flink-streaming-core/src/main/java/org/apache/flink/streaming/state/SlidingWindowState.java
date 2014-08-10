@@ -19,12 +19,11 @@
 
 package org.apache.flink.streaming.state;
 
-import java.io.Serializable;
-import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 
 import org.apache.commons.collections.buffer.CircularFifoBuffer;
-
-import org.apache.flink.api.java.tuple.Tuple;
+import org.apache.flink.streaming.api.streamrecord.StreamRecord;
 
 /**
  * The window state for window operator. To be general enough, this class
@@ -32,37 +31,48 @@ import org.apache.flink.api.java.tuple.Tuple;
  * compose time based window operator by extending this class by splitting the
  * stream into multiple mini batches.
  */
-public class SlidingWindowState<InTuple extends Tuple> implements Serializable {
-	private static final long serialVersionUID = -2376149970115888901L;
-	private int currentRecordCount;
+public class SlidingWindowState<T> {
+	private long currentRecordCount;
 	private int fullRecordCount;
 	private int slideRecordCount;
+	private SlidingWindowStateIterator<T> iterator;
 
-	CircularFifoBuffer buffer;
+	private CircularFifoBuffer buffer;
 
-	public SlidingWindowState(int windowSize, int slidingStep, int computeGranularity) {
+	public SlidingWindowState(long windowSize, long slideInterval, long timeUnitInMillis) {
 		this.currentRecordCount = 0;
 		// here we assume that windowSize and slidingStep is divisible by
-		// computeGranularity.
-		this.fullRecordCount = windowSize / computeGranularity;
-		this.slideRecordCount = slidingStep / computeGranularity;
+		// computationGranularity.
+		this.fullRecordCount = (int) (windowSize / timeUnitInMillis);
+		this.slideRecordCount = (int) (slideInterval / timeUnitInMillis);
 		this.buffer = new CircularFifoBuffer(fullRecordCount);
+		this.iterator = new SlidingWindowStateIterator<T>(buffer);
 	}
 
-	public void pushBack(ArrayList<InTuple> tupleArray) {
-		buffer.add(tupleArray);
+	public void pushBack(List<StreamRecord<T>> array) {
+		buffer.add(array);
 		currentRecordCount += 1;
 	}
 
 	@SuppressWarnings("unchecked")
-	public ArrayList<InTuple> popFront() {
-		ArrayList<InTuple> frontRecord = (ArrayList<InTuple>) buffer.get();
+	public List<StreamRecord<T>> popFront() {
+		List<StreamRecord<T>> frontRecord = (List<StreamRecord<T>>) buffer.get();
 		buffer.remove();
 		return frontRecord;
 	}
 
 	public boolean isFull() {
 		return currentRecordCount >= fullRecordCount;
+	}
+
+	public SlidingWindowStateIterator<T> getIterator() {
+		iterator.reset();
+		return iterator;
+	}
+
+	public Iterator<StreamRecord<T>> getStreamRecordIterator() {
+		iterator.reset();
+		return iterator.getStreamRecordIterator();
 	}
 
 	public boolean isEmittable() {
