@@ -30,6 +30,9 @@ public class RedisState {
 		jedis = new Jedis("localhost");
 	}
 	
+	public void close(){
+		jedis.close();
+	}
 	
 	public void setTuple(String key, String value){
 		jedis.set(key, value);
@@ -44,8 +47,7 @@ public class RedisState {
 	}
 	
 	public RedisStateIterator getIterator(){
-//		ScanResult<String> result = jedis.sscan("foo", SCAN_POINTER_START);
-		return new RedisStateIterator();
+		return new RedisStateIterator(jedis);
 	}
 
 }

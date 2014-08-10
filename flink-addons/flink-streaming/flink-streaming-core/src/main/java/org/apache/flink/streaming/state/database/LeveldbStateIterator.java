@@ -24,7 +24,7 @@ import static org.fusesource.leveldbjni.JniDBFactory.asString;
 import org.iq80.leveldb.DBIterator;
 
 public class LeveldbStateIterator {
-	DBIterator iterator;
+	private DBIterator iterator;
 	public LeveldbStateIterator(DBIterator iter){
 		this.iterator=iter;
 		this.iterator.seekToFirst();

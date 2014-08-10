@@ -31,12 +31,12 @@ import org.iq80.leveldb.Options;
 
 public class LeveldbState {
 	
-	DB database;
+	private DB database;
 	public LeveldbState(String dbName){
 		Options options = new Options();
 		options.createIfMissing(true);
 		try {
-			database = factory.open(new File("dbName"), options);
+			database = factory.open(new File(dbName), options);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}

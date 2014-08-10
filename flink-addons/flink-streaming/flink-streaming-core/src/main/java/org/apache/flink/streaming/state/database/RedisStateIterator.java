@@ -19,28 +19,41 @@
 
 package org.apache.flink.streaming.state.database;
 
-import static org.fusesource.leveldbjni.JniDBFactory.asString;
+import java.util.Iterator;
 
-import org.iq80.leveldb.DBIterator;
+import redis.clients.jedis.Jedis;
 
 public class RedisStateIterator {
-	DBIterator iterator;
-	public RedisStateIterator(){
+	
+	private Iterator<String> iterator;
+	private int position;
+	private int size;
+	private String currentKey;
+	private Jedis jedis;
+	public RedisStateIterator(Jedis jedis){
+		this.jedis = jedis;
+		iterator = jedis.keys("*").iterator();
+		size = jedis.keys("*").size();
+		currentKey = iterator.next();
+		position = 0;
 	}
 	
 	public boolean hasNext(){
-		return iterator.hasNext();
+		return position != size;
 	}
 	
 	public String getNextKey(){
-		return asString(iterator.peekNext().getKey());
+		return currentKey;
 	}
 	
 	public String getNextValue(){
-		return asString(iterator.peekNext().getValue());
+		return jedis.get(currentKey);
 	}
 	
 	public void next(){
-		iterator.next();
+		position += 1;
+		if (position != size){
+			currentKey = iterator.next();
+		}
 	}
 }

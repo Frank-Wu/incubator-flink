@@ -45,5 +45,15 @@ public class DatabaseTest {
 		RedisState state=new RedisState();
 		state.setTuple("hello", "world");
 		System.out.println(state.getTuple("hello"));
+		state.setTuple("big", "data");
+		state.setTuple("flink", "streaming");
+		RedisStateIterator iterator=state.getIterator();
+		while(iterator.hasNext()){
+			String key=iterator.getNextKey();
+			String value=iterator.getNextValue();
+			System.out.println("key="+key+", value="+value);
+			iterator.next();
+		}
+		state.close();
 	}
 }
