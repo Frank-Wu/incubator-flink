@@ -19,6 +19,9 @@
 
 package org.apache.flink.streaming.state.database;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
 import org.junit.Test;
 
 public class DatabaseTest {
@@ -40,6 +43,7 @@ public class DatabaseTest {
 		state.close();
 	}
 	
+	//please remind starting Redis service before testing.
 	@Test
 	public void RedisTest(){
 		RedisState state=new RedisState();
@@ -56,4 +60,30 @@ public class DatabaseTest {
 		}
 		state.close();
 	}
+	
+	//please remind starting mysql service before testing.
+	@Test
+	public void MysqlTest(){
+		MysqlState state=new MysqlState("testdb", "root", "yingjun");
+		String sql = "create table flinkdb(mykey varchar(20), myvalue varchar(20))";
+		state.executeUpdate(sql);
+		sql = "insert into flinkdb values('hello', 'world')";
+		state.executeUpdate(sql);
+		sql = "insert into flinkdb values('big', 'data')";
+		state.executeUpdate(sql);
+		sql = "insert into flinkdb values('flink', 'streaming')";
+		state.executeUpdate(sql);
+		sql = "select * from flinkdb";
+		ResultSet results = state.executeQuery(sql);
+		try {
+			while(results.next()){
+				String key=results.getString("mykey");
+				String value=results.getString("myvalue");
+				System.out.println("mykey="+key+", myvalue="+value);
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		state.close();
+	}	
 }
