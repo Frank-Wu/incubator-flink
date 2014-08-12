@@ -85,5 +85,17 @@ public class DatabaseTest {
 			e.printStackTrace();
 		}
 		state.close();
-	}	
+	}
+	
+	@Test
+	public void MemcachedState(){
+		MemcachedState state=new MemcachedState();
+		state.setTuple("hello", "world");
+		state.setTuple("big", "data");
+		state.setTuple("flink", "streaming");
+		System.out.println(state.getTuple("hello"));
+		System.out.println(state.getTuple("big"));
+		System.out.println(state.getTuple("flink"));
+		state.close();
+	}
 }
