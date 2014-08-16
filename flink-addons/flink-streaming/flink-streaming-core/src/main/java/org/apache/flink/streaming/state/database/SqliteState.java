@@ -41,6 +41,26 @@ public class SqliteState {
 		}
 	}
 	
+	public SqliteState(String dbName, boolean inmemory){
+		if(inmemory==true){
+			try {
+				Class.forName("org.sqlite.JDBC");
+				connection = DriverManager.getConnection("jdbc:sqlite::memory:");
+				statement = connection.createStatement();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}else{
+			try {
+				Class.forName("org.sqlite.JDBC");
+				connection = DriverManager.getConnection("jdbc:sqlite:"+dbName+".db");
+				statement = connection.createStatement();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+	}
+	
 	public void close(){
 		try {
 			result.close();
